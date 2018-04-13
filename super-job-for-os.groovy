@@ -1,6 +1,6 @@
 node ('python') {
     currentBuild.description = STACK_NAME
-    timestamps(){
+\\    timestamps(){
       // Configure OpenStack credentials and command
       withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
           usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
@@ -302,5 +302,5 @@ node ('python') {
           ])
       }
       */
-    }
+\\    }
 }

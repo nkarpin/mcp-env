@@ -1,6 +1,6 @@
 node ('python') {
     currentBuild.description = STACK_NAME
-    timestamps(){
+\\    timestamps(){
         repo_url = "ssh://mos-scale-jenkins@gerrit.mirantis.com:29418/mirantis-mos-scale/heat-templates"
         // Configure OpenStack credentials and command
         withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
@@ -52,5 +52,5 @@ node ('python') {
                 }
             }
         }
-    }
+\\    }
 }
