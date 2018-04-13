@@ -23,16 +23,6 @@ node ('python') {
                 ])
           }
       }
-      stage("Fetch mos-scale/mos-scale-infra"){
-        repo_url = "ssh://mos-scale-jenkins@gerrit.mirantis.com:29418/mos-scale/mos-scale-infra"
-        sh "rm -rf mos-scale-infra"
-        sshagent (credentials: ['ece6c586-cd26-481c-92a8-ccae6bf9cf86']) {
-          sh "$git clone $repo_url"
-          if (params.REFSPEC != ""){
-               sh "cd  mos-scale-infra; git fetch $repo_url $REFSPEC ; git checkout FETCH_HEAD"
-          }
-        }
-      }
       stage ('Generate model'){
         // Update cluster_domain, cluster_name, openldap_domain, openstack_compute_count,
         // from job parameters
@@ -114,13 +104,13 @@ node ('python') {
           if (!opencontrail_enabled) {
             sh "cp -f mos-scale-infra/jenkins_job_builder/templates/super_job_for_os/cluster_settings_patch/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
           }
-          // Move gluster servers to ctl nodes
-          glaster_server_params = ["system.glusterfs.server.cluster",
+          // Move gluster servers to cid nodes
+          gluster_server_params = ["system.glusterfs.server.cluster",
                                    "system.glusterfs.server.volume.salt_pki",
                                    "system.glusterfs.server.volume.glance",
                                    "system.glusterfs.server.volume.keystone"]
-          for (glaster_server_param in glaster_server_params){
-            sh "$reclass_tools add-key --merge classes $glaster_server_param $model_path/cicd/control/init.yml"
+          for (gluster_server_param in gluster_server_params){
+            sh "$reclass_tools add-key --merge classes $gluster_server_param $model_path/cicd/control/init.yml"
           }
           files_for_edit = ["cicd/control/init.yml", "infra/init.yml"]
           nodes = ['01', '02', '03']
@@ -148,7 +138,6 @@ node ('python') {
         }
       }
       stage ('Build config drive image'){
-        // input 'Ready to go?'
         sh "mkisofs -o ${WORKSPACE}/cfg01.${STACK_NAME}-config.iso -V cidata -r -J --quiet /tmp/cfg01.${STACK_NAME}-config"
       }
       stage("Delete old image"){
