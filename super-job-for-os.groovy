@@ -64,12 +64,12 @@ node ('python') {
       archiveArtifacts artifacts: JOB_NAME + ".yaml"
       sh "rm -f " + tmp_template_file
       print("Using context:\n" + COOKIECUTTER_TEMPLATE_CONTEXT)
-      build(job: 'Generate reclass cluster separated-products',
+      build(job: 'generate-salt-model-separated-products',
             parameters: [
               [$class: 'StringParameterValue', name: 'COOKIECUTTER_TEMPLATE_CONTEXT', value: COOKIECUTTER_TEMPLATE_CONTEXT ],
             ])
       // TODO need to change logic to get not last build but needed artifact
-      sh "wget --progress=dot:mega --auth-no-challenge -O cfg01.${STACK_NAME}-config.iso --user root --password r00tme 'http://172.17.48.165:8880/job/generate_salt_model/lastSuccessfulBuild/artifact/output-${STACK_NAME}/cfg01.${STACK_NAME}.local-config.iso'"
+      sh "wget --progress=dot:mega --auth-no-challenge -O cfg01.${STACK_NAME}-config.iso --user root --password r00tme 'https://${env.JENKINS_URL}/job/generate-salt-model-separated-products/lastSuccessfulBuild/artifact/output-${STACK_NAME}/cfg01.${STACK_NAME}.local-config.iso'"
     }
     stage ('Extract config drive image'){
       sh "rm -rf /tmp/cfg01.${STACK_NAME}-config"
