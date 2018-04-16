@@ -1,0 +1,21 @@
+parameters:
+  linux:
+    storage:
+      loopback:
+        loop0:
+          enabled: true
+          file: /srv/disk0
+          size: 20G
+      lvm:
+        cinder-vg:
+          enabled: true
+          name: cinder-volumes
+          devices: [ "/dev/loop0" ]
+  cinder:
+    volume:
+      default_volume_type: lvm-driver
+      backend:
+        lvm-driver:
+          engine: lvm
+          type_name: lvm-driver
+          volume_group: cinder-volumes

@@ -87,10 +87,11 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes system.openssh.server.team.$team $model_path/infra/init.yml"
       }
       if (openstack_enabled) {
+        source_patch_path="pipelines/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
         if ( !opencontrail_enabled ) {
-          sh "test -d $model_path/openstack && cp -f mos-scale-infra/jenkins_job_builder/templates/super_job_for_os/cluster_settings_patch/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
+          sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
         }
         // Modify compute yaml
         sh "mkdir $model_path/openstack/scale-ci-patch"
@@ -99,9 +100,9 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes system.cinder.volume.notification.messagingv2 $model_path/openstack/compute/init.yml"
         sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
         sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
-        sh "cp -f mos-scale-infra/jenkins_job_builder/templates/super_job_for_os/cluster_settings_patch/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
+        sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
         if (!opencontrail_enabled) {
-          sh "cp -f mos-scale-infra/jenkins_job_builder/templates/super_job_for_os/cluster_settings_patch/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
+          sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
         }
         // Move gluster servers to cid nodes
         gluster_server_params = ["system.glusterfs.server.cluster",
@@ -129,7 +130,7 @@ node ('python') {
       }
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
-        source_patch_path="mos-scale-infra/jenkins_job_builder/templates/super_job_for_os/cluster_settings_patch"
+        source_patch_path="pipelines/cluster_settings_patch"
         sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
