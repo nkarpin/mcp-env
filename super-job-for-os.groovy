@@ -1,10 +1,13 @@
 node ('python') {
+    // Checkout scm specified in job configuration
+    checkout scm
     currentBuild.description = STACK_NAME
     // Configure OpenStack credentials and command
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
         usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
             env.OS_USERNAME = OS_USERNAME
             env.OS_PASSWORD = OS_PASSWORD
+            env.OS_PROJECT_NAME = 'mcp-scale'
     }
     openstack = "set +x; venv/bin/openstack "
     reclass_tools = "venv/bin/reclass-tools"
@@ -87,7 +90,7 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes system.openssh.server.team.$team $model_path/infra/init.yml"
       }
       if (openstack_enabled) {
-        source_patch_path="$WORKSPACE@script/cluster_settings_patch"
+        source_patch_path="$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
         if ( !opencontrail_enabled ) {
@@ -130,7 +133,7 @@ node ('python') {
       }
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
-        source_patch_path="$WORKSPACE@script/cluster_settings_patch"
+        source_patch_path="$WORKSPACE/cluster_settings_patch"
         sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
