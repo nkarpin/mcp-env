@@ -87,7 +87,7 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes system.openssh.server.team.$team $model_path/infra/init.yml"
       }
       if (openstack_enabled) {
-        source_patch_path="pipelines/cluster_settings_patch"
+        source_patch_path="$WORKSPACE@script/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
         if ( !opencontrail_enabled ) {
@@ -130,7 +130,7 @@ node ('python') {
       }
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
-        source_patch_path="pipelines/cluster_settings_patch"
+        source_patch_path="$WORKSPACE@script/cluster_settings_patch"
         sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
