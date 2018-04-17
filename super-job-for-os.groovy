@@ -1,13 +1,13 @@
 node ('python') {
+    currentBuild.description = STACK_NAME
     // Checkout scm specified in job configuration
     checkout scm
-    currentBuild.description = STACK_NAME
     // Configure OpenStack credentials and command
-    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
         usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
             env.OS_USERNAME = OS_USERNAME
             env.OS_PASSWORD = OS_PASSWORD
-            env.OS_PROJECT_NAME = 'mcp-scale'
+            env.OS_PROJECT_NAME = OS_PROJECT_NAME
     }
     openstack = "set +x; venv/bin/openstack "
     reclass_tools = "venv/bin/reclass-tools"
@@ -18,9 +18,10 @@ node ('python') {
     }
     stage ("Handle old heat stack") {
         if (params.DELETE_STACK){
-            build(job: 'delete_heat_stack',
+            build(job: 'delete-heat-stack',
               parameters: [
-                [$class: 'StringParameterValue', name: 'REFSPEC', value: ''],
+                [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+                [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
                 [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
               ])
         }
@@ -224,11 +225,14 @@ node ('python') {
             parameters: [
               [$class: 'StringParameterValue', name: 'HEAT_ENV_FILE', value: HEAT_ENV_FILE],
               [$class: 'StringParameterValue', name: 'HEAT_TEMPLATE_FILE', value: HEAT_TEMPLATE_FILE],
+              [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
+              [$class: 'StringParameterValue', name: 'OS_AZ', value: OS_AZ],
               [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
               [$class: 'BooleanParameterValue', name: 'DELETE_STACK', value: Boolean.valueOf(true)],
               [$class: 'StringParameterValue', name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT],
               [$class: 'StringParameterValue', name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX],
-              [$class: 'StringParameterValue', name: 'REFSPEC', value: HEAT_REFSPEC]
+              [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+              [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC]
             ])
     }
     stage ('Deploy open stack'){
@@ -253,7 +257,9 @@ node ('python') {
       try {
         build(job: 'run-cicd-day01-image',
               parameters: [
+                [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
                 [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+                [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
                 [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL]
               ])
       } catch (Exception e) {
@@ -290,7 +296,7 @@ node ('python') {
       }
     }
     /*
-    TODO Need to properly plan testing/acceptance workflow for Dev teams
+    TODO Need to properly plan testing/acceptance workflow for Dev teams before use this section
     stage('Run rally tests'){
       build(job: 'run-rally',
         parameters: [

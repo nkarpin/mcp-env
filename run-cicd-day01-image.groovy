@@ -1,10 +1,11 @@
 node ('python') {
     currentBuild.description = STACK_NAME
       // Configure OpenStack credentials and command
-      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
+      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
           usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
               env.OS_USERNAME = OS_USERNAME
               env.OS_PASSWORD = OS_PASSWORD
+              env.OS_PROJECT_NAME = OS_PROJECT_NAME
       }
       openstack = "set +x; venv/bin/openstack "
       jenkins_user = "admin"
@@ -47,8 +48,10 @@ node ('python') {
         "]}"
         build(job: 'run-job-on-cfg01-jenkins',
           parameters: [
+            [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
             [$class: 'StringParameterValue', name: 'JOB_NAME', value: 'deploy_openstack'],
             [$class: 'StringParameterValue', name: 'JOB_JSON', value: JSON],
+            [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
             [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
             ])
       }

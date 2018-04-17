@@ -1,23 +1,25 @@
 node ('python') {
     currentBuild.description = STACK_NAME
-      repo_url = "ssh://mos-scale-jenkins@gerrit.mirantis.com:29418/mirantis-mos-scale/heat-templates"
       // Configure OpenStack credentials and command
-      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'devcloud-mcp-scale',
+      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
           usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
               env.OS_USERNAME = OS_USERNAME
               env.OS_PASSWORD = OS_PASSWORD
+              env.OS_PROJECT_NAME = OS_PROJECT_NAME
       }
       openstack = "set +x; venv/bin/openstack "
       heat = "$openstack stack "
       stage ('Checkout'){
-          git url: repo_url, branch: 'master'
-      }
-      stage ('Fetch review'){
-        if (params.REFSPEC != ""){
-            sh "git clean -xfd"
-            sh "git fetch $repo_url $REFSPEC"
-            sh "git checkout FETCH_HEAD"
-        }
+        repo_url = "ssh://mcp-jenkins@gerrit.mcp.mirantis.net:29418/mcp-env/heat-templates"
+        checkout([
+          $class: 'GitSCM',
+          branches: [
+                [name: 'FETCH_HEAD'],
+            ],
+          userRemoteConfigs: [
+                [url: repo_url, refspec: env.HEAT_TEMPLATES_REFSPEC ?: 'master', credentialsId: 'gerrit'],
+            ],
+        ])
       }
       stage ('Build venv'){
           sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient"
@@ -26,7 +28,8 @@ node ('python') {
           if (params.DELETE_STACK){
               build(job: 'delete-heat-stack',
                 parameters: [
-                  [$class: 'StringParameterValue', name: 'REFSPEC', value: ''],
+                  [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+                  [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
                   [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
                 ])
           }
@@ -34,7 +37,7 @@ node ('python') {
             out = sh script: "$openstack volume list | grep cfg01-${STACK_NAME}-config | awk '{print \$2}'", returnStdout: true
             disk_drive_id = out.trim()
             sh "sed -i 's/volume01-id/${disk_drive_id}/' template/$HEAT_TEMPLATE_FILE"
-            sh "$heat create -e env/$HEAT_ENV_FILE --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter flavor_prefix=${FLAVOR_PREFIX} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
+            sh "$heat create -e env/$HEAT_ENV_FILE --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
           } else {
             sh "$heat create -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
           }
