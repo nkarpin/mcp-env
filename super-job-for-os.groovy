@@ -83,13 +83,6 @@ node ('python') {
       model_path = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/cluster/${STACK_NAME}"
       sh "rm cfg01.${STACK_NAME}-config.iso"
       sh "rm /tmp/cfg01.${STACK_NAME}-config/meta-data"
-      // Add teams who can get ssh access
-      teams_with_access = ["qa_scale",
-                           "oscore_devops",
-                           "tcpcloud"]
-      for (team in teams_with_access) {
-        sh "$reclass_tools add-key --merge classes system.openssh.server.team.$team $model_path/infra/init.yml"
-      }
       if (openstack_enabled) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
