@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 node ('python') {
     currentBuild.description = STACK_NAME
     // Checkout scm specified in job configuration
@@ -37,10 +39,14 @@ node ('python') {
       templateContext['default_context']['openldap_domain'] = STACK_NAME + ".local"
       templateContext['default_context']['openstack_compute_count'] = COMPUTE_NODES_COUNT
       def stack_install_options = STACK_INSTALL.split(',')
-      stacklight_enabled = false
       openstack_enabled = false
       kubernetes_enabled = false
       opencontrail_enabled = false
+      templateContext['default_context']['opencontrail_enabled'] = "False"
+      stacklight_enabled = false
+      templateContext['default_context']['stacklight_enabled'] = "False"
+      cicd_enabled = false
+      templateContext['default_context']['cicd_enabled'] = "False"
       stack_install_options.each {
         if ( it == "openstack" ) {
           openstack_enabled = true
@@ -48,14 +54,16 @@ node ('python') {
           templateContext['default_context']['kubernetes_enabled'] = "False"
         } else if ( it == "k8s" ) {
           kubernetes_enabled = true
-          templateContext['default_context']['openstack_enabled'] = "False"
           templateContext['default_context']['kubernetes_enabled'] = "True"
+          templateContext['default_context']['openstack_enabled'] = "False"
         }
         if ( it == "stacklight") {
           stacklight_enabled = true
           templateContext['default_context']['stacklight_enabled'] = "True"
-        } else {
-          templateContext['default_context']['stacklight_enabled'] = "False"
+        }
+        if ( it == "cicd") {
+          cicd_enabled = true
+          templateContext['default_context']['cicd_enabled'] = "True"
         }
         if ( it == "opencontrail") {
           opencontrail_enabled = true
@@ -101,29 +109,47 @@ node ('python') {
         if (!opencontrail_enabled) {
           sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
         }
-        // Move gluster servers to cid nodes
-        gluster_server_params = ["system.glusterfs.server.cluster",
-                                 "system.glusterfs.server.volume.salt_pki",
-                                 "system.glusterfs.server.volume.glance",
-                                 "system.glusterfs.server.volume.keystone"]
-        for (gluster_server_param in gluster_server_params){
-          sh "$reclass_tools add-key --merge classes $gluster_server_param $model_path/cicd/control/init.yml"
-        }
-        files_for_edit = ["cicd/control/init.yml", "infra/init.yml"]
-        nodes = ['01', '02', '03']
-        for (file_for_edit in files_for_edit){
-          for (node in nodes){
-            sh "sed -i 's/glusterfs_node${node}_address: \${_param:infra_kvm_node${node}_address}/glusterfs_node${node}_address: \${_param:cicd_control_node${node}_address}/' $model_path/$file_for_edit"
+        if (cicd_enabled) {
+          // Move gluster servers to cid nodes
+          glaster_server_params = ["system.glusterfs.server.cluster",
+                                   "system.glusterfs.server.volume.salt_pki",
+                                   "system.glusterfs.server.volume.glance",
+                                   "system.glusterfs.server.volume.keystone"]
+          for (glaster_server_param in glaster_server_params){
+            sh "$reclass_tools add-key --merge classes $glaster_server_param $model_path/cicd/control/init.yml"
           }
-        }
-        files_for_edit = ["cicd/init.yml", "openstack/init.yml"]
-        for (file_for_edit in files_for_edit){
-          sh "test -d $model_path/cicd && sed -i 's/glusterfs_service_host: \${_param:infra_kvm_address}/glusterfs_service_host: \${_param:cicd_control_address}/' $model_path/$file_for_edit"
+          files_for_edit = ["cicd/control/init.yml", "infra/init.yml"]
+          nodes = ['01', '02', '03']
+          for (file_for_edit in files_for_edit){
+            for (node in nodes){
+              sh "sed -i 's/glusterfs_node${node}_address: \${_param:infra_kvm_node${node}_address}/glusterfs_node${node}_address: \${_param:cicd_control_node${node}_address}/' $model_path/$file_for_edit"
+            }
+          }
+          files_for_edit = ["cicd/init.yml", "openstack/init.yml"]
+          for (file_for_edit in files_for_edit){
+            sh "test -d $model_path/cicd && sed -i 's/glusterfs_service_host: \${_param:infra_kvm_address}/glusterfs_service_host: \${_param:cicd_control_address}/' $model_path/$file_for_edit"
+          }
+        } else {
+          // workaround it some other way
+          // 'cause we still need cicds for current OS deployments
+          // until then fail:
+          println "You need to have cicd for OS deployments"
+          sh "exit 1"
         }
       }
       if (kubernetes_enabled) {
         println "Setting workarounds for kubernetes"
-        // put them here if you need some
+        // useless default networking
+        sh "sed -i 's/\\(^- cluster.${STACK_NAME}.kubernetes.networking.compute\\)/#\\1/' $model_path/kubernetes/compute.yml"
+        // change keepalived VRID of K8S VIP
+        if (templateContext['default_context']['k8s_keepalived_vip_vrid']) {
+          def k8s_keepalived_vip_vrid = templateContext['default_context']['k8s_keepalived_vip_vrid']
+          sh "$reclass_tools add-key parameters._param.keepalived_vip_virtual_router_id $k8s_keepalived_vip_vrid $model_path/kubernetes/control.yml"
+        }
+        // insecure API binding
+        if (templateContext['default_context']['k8s_api_insecure_bind'] == 'True') {
+          sh "$reclass_tools add-key parameters.kubernetes.master.apiserver.insecure_address 0.0.0.0 $model_path/kubernetes/control.yml"
+        }
       }
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
@@ -165,52 +191,52 @@ node ('python') {
     stage('Collect artifatcs'){
       archiveArtifacts artifacts: "cfg01.${STACK_NAME}-config.iso"
     }
-    stage("Update VMs image if needed"){
+    stage("Update VMs images if needed"){
       mcpVersion = templateContext['default_context']['mcp_version']
-      if (mcpVersion == 'proposed') {
-        vmImageUrl = "http://ci.mcp.mirantis.net:8085/images/ubuntu-16-04-x64-mcpproposed.qcow2"
-      } else {
-        vmImageUrl = "http://images.mirantis.com.s3.amazonaws.com/ubuntu-16-04-x64-mcptesting.qcow2"
+      if (mcpVersion == '') {
+        mcpVersion = 'testing'
       }
-      // Get md5sum of the image which we need
-      def vmImageMd5 = sh(returnStdout: true, script: "curl -s ${vmImageUrl}.md5 | awk '{print \$1}'")
-      println "it's md5 of VM image ${vmImageMd5}"
-      // Find an image with needed md5 in glance
-      try {
-        def vmImageId = sh(returnStdout: true, script: "$openstack image list --long -f value -c ID -c Name -c Checksum | grep -w scale-ubuntu-16-04-x64-mcptesting | grep ${vmImageMd5}").split(' ')[0]
-        println "Found the following images for VCP: ${vmImageId}"
-      } catch (err) {
-        println "Can't find images for VCP, creating a new one"
-        sh "wget -q -O ./scale-ubuntu-16-04-x64-mcptesting.qcow2 ${vmImageUrl}"
-        sh "md5sum ./scale-ubuntu-16-04-x64-mcptesting.qcow2"
-        sh "$openstack image delete scale-ubuntu-16-04-x64-mcptesting || true"
-        sh "$openstack image create --disk-format qcow2 --file ./scale-ubuntu-16-04-x64-mcptesting.qcow2 scale-ubuntu-16-04-x64-mcptesting"
-        sh "rm ./scale-ubuntu-16-04-x64-mcptesting.qcow2"
+      vcpImages = ["ubuntu-16-04-x64-mcp",
+                   "ubuntu-14-04-x64-mcp"]
+      for (vcpImage in vcpImages) {
+        vmImageUrl = "http://ci.mcp.mirantis.net:8085/images/${vcpImage}${mcpVersion}.qcow2"
+        // Get md5sum of the image which we need
+        def vmImageMd5 = sh(returnStdout: true, script: "curl -s ${vmImageUrl}.md5 | awk '{print \$1}'")
+        println "it's md5 of VM image ${vmImageMd5}"
+        // Find an image with needed md5 in glance
+        try {
+          def vmImageId = sh(returnStdout: true, script: "$openstack image list --long -f value -c ID -c Name -c Checksum | grep -w scale-${vcpImage}${mcpVersion} | grep ${vmImageMd5}").split(' ')[0]
+          println "Found the following images for VCP: ${vmImageId}"
+        } catch (err) {
+          println "Can't find images for VCP, creating a new one"
+          sh "wget -q -O ./scale-${vcpImage}{mcpVersion}.qcow2 ${vmImageUrl}"
+          sh "md5sum ./scale-${vcpImage}{mcpVersion}.qcow2"
+          sh "$openstack image delete scale-${vcpImage}{mcpVersion} || true"
+          sh "$openstack image create --disk-format qcow2 --file ./scale-${vcpImage}{mcpVersion}.qcow2 scale-${vcpImage}{mcpVersion}"
+          sh "rm ./scale-${vcpImage}{mcpVersion}.qcow2"
+        }
       }
     }
     stage("Update day01 image if needed"){
       mcpVersion = templateContext['default_context']['mcp_version']
-      if (mcpVersion == 'proposed') {
-        // No versions for cfg01-day01 image due to PROD-19280. Need to change the line bellow when it fixed.
-        //day01ImageUrl = "http://ci.mcp.mirantis.net:8085/images/cfg01-day01-mcpproposed.qcow2"
-        day01ImageUrl = "http://ci.mcp.mirantis.net:8085/images/cfg01-day01.qcow2"
-      } else {
-        day01ImageUrl = "http://images.mirantis.com.s3.amazonaws.com/cfg01-day01.qcow2"
+      if (mcpVersion == '') {
+        mcpVersion = 'testing'
       }
+      day01ImageUrl = "http://ci.mcp.mirantis.net:8085/images/cfg01-day01-${mcpVersion}.qcow2"
       // Get md5sum of the image
       def day01ImageMd5 = sh(returnStdout: true, script: "curl -s ${day01ImageUrl}.md5 | awk '{print \$1}'")
       println "it's md5 of day01 image ${day01ImageMd5}"
       // Find an image with needed md5 in glance
       try {
-        def day01ImageId = sh(returnStdout: true, script: "$openstack image list --long -f value -c ID -c Name -c Checksum | grep -w scale-cfg01-day01 | grep ${day01ImageMd5}").split(' ')[0]
+        def day01ImageId = sh(returnStdout: true, script: "$openstack image list --long -f value -c ID -c Name -c Checksum | grep -w scale-cfg01-day01-${mcpVersion} | grep ${day01ImageMd5}").split(' ')[0]
         println "Found the following images for day01: ${day01ImageId}"
       } catch (err) {
         println "Can't find images for day01, creating a new one"
-        sh "wget -q -O ./scale-cfg01-day01.qcow2 ${day01ImageUrl}"
-        sh "md5sum ./scale-cfg01-day01.qcow2"
-        sh "$openstack image delete scale-cfg01-day01 || true"
-        sh "$openstack image create --disk-format qcow2 --file ./scale-cfg01-day01.qcow2 scale-cfg01-day01"
-        sh "rm ./scale-cfg01-day01.qcow2"
+        sh "wget -q -O ./scale-cfg01-day01-${mcpVersion}.qcow2 ${day01ImageUrl}"
+        sh "md5sum ./scale-cfg01-day01-${mcpVersion}.qcow2"
+        sh "$openstack image delete scale-cfg01-day01-${mcpVersion} || true"
+        sh "$openstack image create --disk-format qcow2 --file ./scale-cfg01-day01-${mcpVersion}.qcow2 scale-cfg01-day01-${mcpVersion}"
+        sh "rm ./scale-cfg01-day01-${mcpVersion}.qcow2"
       }
     }
     stage ('Deploy heat stack'){
@@ -223,6 +249,7 @@ node ('python') {
               [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
               [$class: 'BooleanParameterValue', name: 'DELETE_STACK', value: Boolean.valueOf(true)],
               [$class: 'StringParameterValue', name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT],
+              [$class: 'StringParameterValue', name: 'MCP_VERSION', value: mcpVersion],
               [$class: 'StringParameterValue', name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX],
               [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
               [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC]
@@ -232,20 +259,20 @@ node ('python') {
       job_failed = false
       deploy_settings = ""
       if (openstack_enabled){
-        deploy_settings = deploy_settings + "-openstack"
+        deploy_settings = deploy_settings + " openstack"
       }
       if (kubernetes_enabled){
-        deploy_settings = deploy_settings + "-kubernetes"
+        deploy_settings = deploy_settings + " kubernetes"
       }
       if (opencontrail_enabled){
-        deploy_settings = deploy_settings + "-opencontrail"
+        deploy_settings = deploy_settings + " opencontrail"
       } else {
         if (openstack_enabled){
-          deploy_settings = deploy_settings + "-ovs"
+          deploy_settings = deploy_settings + " ovs"
         }
       }
       if (stacklight_enabled){
-        deploy_settings = deploy_settings + "-stacklight"
+        deploy_settings = deploy_settings + " stacklight"
       }
       try {
         build(job: 'run-cicd-day01-image',
@@ -259,23 +286,25 @@ node ('python') {
         job_failed = true
         job_error = e
       }
+      def date = new Date()
+      String fDate = date.format( 'yyyy-MM-dd' )
       junit_report = "<?xml version='1.0' encoding='utf-8'?>"
       if (job_failed){
         junit_report = junit_report +
                        "<testsuites><testsuite errors='0' failures='1' tests='1' time='1' >" +
-                       "<testcase classname='ScaleDeployment' name='cluster_deploy' time='1'> " +
+                       "<testcase classname='ScaleDeployment' name='Cluster deploy with$deploy_settings' time='1'> " +
                        "<failure>Deploy failured</failure>"
         } else {
         junit_report = junit_report +
                        "<testsuites><testsuite errors='0' failures='0' tests='1' time='1'>" +
-                       "<testcase classname='ScaleDeployment' name='cluster_deploy' time='1' /> "
+                       "<testcase classname='ScaleDeployment' name='Cluster deploy with$deploy_settings' time='1' /> "
         }
       junit_report = junit_report + "</testcase></testsuite></testsuites>"
       writeFile file: "/tmp/scale_cluster_deploy_junut.xml", text: junit_report
-      report_cmd = "$report --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' "+
+      report_cmd = "$report --testrail-run-update --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' "+
                    " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' "+
-                   "--testrail-suite 'Scale-cluster-deploy$deploy_settings' --testrail-plan-name 'Scale-cluster-deploy$deploy_settings' --env 'Dev cloud' "+
-                   "--xunit-name-template '{classname}.{methodname}' --testrail-name-template '{title}' "+
+                   "--testrail-suite '[MCP_X] integration cases' --testrail-plan-name '[MCP-Q1]System-$fDate' --env 'Dev cloud' "+
+                   "--xunit-name-template '{methodname}' --testrail-name-template '{title}' "+
                    "/tmp/scale_cluster_deploy_junut.xml"
       try {
         if (params.REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL){

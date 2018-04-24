@@ -18,9 +18,6 @@ node ('python') {
     cfg01_ip = out.trim()
   }
   stage ('Execute job on cfg01 node'){
-    out = sh script: "wget -q --auth-no-challenge --user $jenkins_user --password $jenkins_pass --output-document - 'http://$cfg01_ip:8081/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)'", returnStdout: true
-    crumbl = out.trim()
-    print crumbl
     // Check build status
     out = sh script: "curl -s -X GET 'http://$cfg01_ip:8081/job/$JOB_NAME/lastBuild/api/json?tree=result' --user $jenkins_user:$jenkins_pass | grep -c '404 Not Found' || true", returnStdout: true
     if (out.trim() != "1"){
@@ -29,7 +26,7 @@ node ('python') {
         error("Job already runing !")
       }
     }
-    out = sh script: "curl -s -H $crumbl -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'", returnStdout: true
+    out = sh script: "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'", returnStdout: true
     print out.trim()
     sleep 60
     out = sh script: "curl -s -X GET 'http://$cfg01_ip:8081/job/$JOB_NAME/lastBuild/api/json?tree=number' --user $jenkins_user:$jenkins_pass | jq -r '.number'", returnStdout: true
@@ -49,7 +46,7 @@ node ('python') {
           print ("The job result is $out")
           if (out.trim() != "null" && out.trim() != "SUCCESS" && count <= "$JOB_ATTEMPTS".toInteger() ) {
             print "Job FAILURE try to start next one"
-            sh "curl -s -H $crumbl -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'"
+            sh "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'"
             sleep 300
             status = out.trim()
             break;
