@@ -24,7 +24,6 @@ parameters:
           proto: manual
         vhost0:
           enabled: true
-          ipflush_onchange: true
           type: eth
           address: ${_param:tenant_address}
           netmask: ${_param:tenant_network_netmask}
