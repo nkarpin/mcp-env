@@ -1,0 +1,105 @@
+## Last changed: 2018-04-17 14:38:05 UTC
+version 12.1X46-D20.5;
+system {
+    host-name vsrx1;
+    root-authentication {
+        encrypted-password "$1$gpbfk/Jr$lF2foqHYBd/Sp56dlmkXH1"; ## SECRET-DATA
+    }
+    name-server {
+        8.8.8.8;
+        8.8.4.4;
+    }
+    services {
+        ssh;
+        web-management {
+            http {
+                interface ge-0/0/0.0;
+            }
+        }
+    }
+    syslog {
+        file messages {
+            any any;
+        }
+    }
+    license {
+        autoupdate {
+            url https://ae1.juniper.net/junos/key_retrieval;
+        }
+    }
+    ntp {
+        peer 46.243.48.4;
+        peer 147.251.48.140;
+        peer 46.243.48.88;
+        peer 10.109.3.1;
+    }
+}
+interfaces {
+    ge-0/0/0 {
+        unit 0 {
+            family inet {
+                address 10.11.0.131/16;
+            }
+        }
+    }
+    ge-0/0/1 {
+        mtu 9000;
+        unit 0 {
+            family inet {
+                address 10.10.0.131/16;
+            }
+        }
+    }
+}
+routing-options {
+    route-distinguisher-id 10.10.0.131;
+    autonomous-system 64512;
+    dynamic-tunnels {
+        dynamic_overlay_tunnels {
+            source-address 10.10.0.131;
+            gre;
+            destination-networks {
+                10.109.3.0/24;
+                10.10.0.0/16;
+            }
+        }
+    }
+}
+protocols {
+    mpls {
+        interface all;
+    }
+    bgp {
+        group Contrail_Controller {
+            type internal;
+            local-address 10.10.0.131;
+            keep all;
+            family inet-vpn {
+                unicast;
+            }
+            allow 10.10.0.0/16;
+        }
+    }
+}
+security {
+    forwarding-options {
+        family {
+            mpls {
+                mode packet-based;
+            }
+        }
+    }
+}
+routing-instances {
+    public {
+        instance-type vrf;
+        interface ge-0/0/0.0;
+        vrf-target target:64512:10000;
+        vrf-table-label;
+        routing-options {
+            static {
+                route 0.0.0.0/0 next-hop 10.11.100.1;
+            }
+        }
+    }
+}
