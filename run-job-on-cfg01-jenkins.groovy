@@ -14,7 +14,7 @@ node ('python') {
       sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient"
   }
   stage ('Get cfg01 floating'){
-    out = sh script: "$openstack server list | grep cfg01.$STACK_NAME | grep -oP 'net01=.*, .*(;| )' | awk '{print \$2}' | tr -d ';'", returnStdout: true
+    out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
     cfg01_ip = out.trim()
   }
   stage ('Execute job on cfg01 node'){

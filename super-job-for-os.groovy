@@ -164,7 +164,7 @@ node ('python') {
       sh "mkisofs -o ${WORKSPACE}/cfg01.${STACK_NAME}-config.iso -V cidata -r -J --quiet /tmp/cfg01.${STACK_NAME}-config"
     }
     stage("Delete old image"){
-      sh "for i in \$($openstack image list | grep cfg01-$STACK_NAME-config |  cut -f 2 -d'|'); do $openstack image delete \$i; done || true"
+      sh "for i in \$($openstack image list | grep -w cfg01-$STACK_NAME-config |  cut -f 2 -d'|'); do $openstack image delete \$i; done || true"
     }
     stage("Delete old volume"){
       timeout(10) {
@@ -317,12 +317,11 @@ node ('python') {
         throw job_error
       }
     }
-    /*
-    TODO Need to properly plan testing/acceptance workflow for Dev teams before use this section
     stage('Run rally tests'){
       build(job: 'run-rally',
         parameters: [
-          [$class: 'StringParameterValue', name: 'REFSPEC', value: ''],
+          [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+          [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
           [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
           [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
           [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
@@ -330,7 +329,8 @@ node ('python') {
           [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
           [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
           [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
+          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
+          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
         ])
     }
-    */
 }

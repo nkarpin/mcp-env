@@ -1,0 +1,75 @@
+- job:
+    name: run-rally-cfg01
+    project-type: pipeline
+    concurrent: true
+    properties:
+      - build-discarder:
+          days-to-keep: 100
+          num-to-keep: 100
+    parameters:
+      - bool:
+          name: RUN_RALLY_TESTS
+          default: True
+      - bool:
+          name: RUN_TEMPEST_TESTS
+          default: False
+      - bool:
+          name: RUN_K8S_TESTS
+          default: False
+      - bool:
+          name: RUN_SPT_TESTS
+          default: False
+      - bool:
+          name: ACCUMULATE_RESULTS
+          default: True
+      - bool:
+          name: GENERATE_REPORT
+          default: False
+      - string:
+          name: SALT_MASTER_CREDENTIALS
+          default: 'salt'
+      - string:
+          name: SALT_MASTER_URL
+          default: 'http://cfg01:6969'
+      - string:
+          name: TARGET_NODE
+          default: 'cfg01.cicd-stacklight-ocata-ovs-dbs-msg.local'
+      - string:
+          name: FLOATING_NETWORK
+          default: 'public'
+      - string:
+          name: RALLY_IMAGE
+          default: 'cirros-disk'
+      - string:
+          name: RALLY_FLAVOR
+          default: 'm1.tiny'
+      - string:
+          name: AVAILABILITY_ZONE
+          default: 'admin'
+      - string:
+          name: TEST_IMAGE
+          default: 'sergeygals/rally'
+      - string:
+          name: RALLY_CONFIG_REPO
+          default: 'https://github.com/openstack/rally'
+      - string:
+          name: RALLY_CONFIG_BRANCH
+          default: 'master'
+      - string:
+          name: RALLY_SCENARIOS
+          default: 'test_config/samples/tasks/scenarios/nova/boot-and-delete.yaml'
+      - string:
+          name: RALLY_TASK_ARGS_FILE
+          default: 'none'
+      - string:
+          name: REPORT_DIR
+          default: ''
+    pipeline-scm:
+      script-path: validate-cloud.groovy
+      scm:
+        - git:
+            branches:
+              - '*/master'
+            url: 'git@cfg01:/home/repo/mk/mk-pipelines'
+            skip-tag: true
+            wipe-workspace: false

@@ -34,7 +34,7 @@ node ('python') {
               ])
         }
         if (params.HEAT_ENV_FILE != ""){
-          out = sh script: "$openstack volume list | grep cfg01-${STACK_NAME}-config | awk '{print \$2}'", returnStdout: true
+          out = sh script: "$openstack volume list | grep -w cfg01-${STACK_NAME}-config | awk '{print \$2}'", returnStdout: true
           disk_drive_id = out.trim()
           sh "sed -i 's/volume01-id/${disk_drive_id}/' template/$HEAT_TEMPLATE_FILE"
           sh "$heat create -e env/$HEAT_ENV_FILE --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} --parameter mcp_version=${MCP_VERSION} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
