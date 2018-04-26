@@ -109,33 +109,13 @@ node ('python') {
         if (!opencontrail_enabled) {
           sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
         }
-        if (cicd_enabled) {
-          // Move gluster servers to cid nodes
-          glaster_server_params = ["system.glusterfs.server.cluster",
-                                   "system.glusterfs.server.volume.salt_pki",
-                                   "system.glusterfs.server.volume.glance",
-                                   "system.glusterfs.server.volume.keystone"]
-          for (glaster_server_param in glaster_server_params){
-            sh "$reclass_tools add-key --merge classes $glaster_server_param $model_path/cicd/control/init.yml"
-          }
-          files_for_edit = ["cicd/control/init.yml", "infra/init.yml"]
-          nodes = ['01', '02', '03']
-          for (file_for_edit in files_for_edit){
-            for (node in nodes){
-              sh "sed -i 's/glusterfs_node${node}_address: \${_param:infra_kvm_node${node}_address}/glusterfs_node${node}_address: \${_param:cicd_control_node${node}_address}/' $model_path/$file_for_edit"
-            }
-          }
-          files_for_edit = ["cicd/init.yml", "openstack/init.yml"]
-          for (file_for_edit in files_for_edit){
-            sh "test -d $model_path/cicd && sed -i 's/glusterfs_service_host: \${_param:infra_kvm_address}/glusterfs_service_host: \${_param:cicd_control_address}/' $model_path/$file_for_edit"
-          }
-        } else {
-          // workaround it some other way
-          // 'cause we still need cicds for current OS deployments
-          // until then fail:
-          println "You need to have cicd for OS deployments"
-          sh "exit 1"
-        }
+        // Modify kvm nodes
+        sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
+        sh "sed -i '/system.salt.control.virt/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_control_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_proxy_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_database_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_message_queue_cluster/d' $model_path/infra/kvm.yml"
       }
       if (kubernetes_enabled) {
         println "Setting workarounds for kubernetes"
