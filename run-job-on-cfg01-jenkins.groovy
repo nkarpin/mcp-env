@@ -26,8 +26,14 @@ node ('python') {
         error("Job already runing !")
       }
     }
-    out = sh script: "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'", returnStdout: true
-    print out.trim()
+    // Try to start the job and catch if need to use crumb
+    out = sh script: "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON' | grep -c 'Error 403 No valid crumb was included in the request' || true", returnStdout: true
+    if (out.trim() != "0"){
+      // Using crumb
+      out = sh script: "wget -q --auth-no-challenge --user $jenkins_user --password $jenkins_pass --output-document - 'http://$cfg01_ip:8081/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)'", returnStdout: true
+      crumbl = out.trim()
+      out = sh script: "curl -s -H $crumbl -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'", returnStdout: true
+    }
     sleep 60
     out = sh script: "curl -s -X GET 'http://$cfg01_ip:8081/job/$JOB_NAME/lastBuild/api/json?tree=number' --user $jenkins_user:$jenkins_pass | jq -r '.number'", returnStdout: true
     build_number = out.trim()
@@ -46,7 +52,12 @@ node ('python') {
           print ("The job result is $out")
           if (out.trim() != "null" && out.trim() != "SUCCESS" && count <= "$JOB_ATTEMPTS".toInteger() ) {
             print "Job FAILURE try to start next one"
-            sh "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'"
+            // Need to use crumb if catched earlier
+            if (binding.hasVariable('crumbl')) {
+              sh "curl -s -H $crumbl -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'"
+            } else {
+              sh "curl -s -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'"
+            }
             sleep 300
             status = out.trim()
             break;
