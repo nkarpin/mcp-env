@@ -297,7 +297,7 @@ node ('python') {
         } else {
         junit_report = junit_report +
                        "<testsuites><testsuite errors='0' failures='0' tests='1' time='1'>" +
-                       "<testcase classname='ScaleDeployment' name='Cluster deploy with$deploy_settings' time='1' /> "
+                       "<testcase classname='ScaleDeployment' name='Cluster deploy with$deploy_settings' time='1'> "
         }
       junit_report = junit_report + "</testcase></testsuite></testsuites>"
       writeFile file: "/tmp/scale_cluster_deploy_junut.xml", text: junit_report
