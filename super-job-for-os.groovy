@@ -91,6 +91,19 @@ node ('python') {
       model_path = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/cluster/${STACK_NAME}"
       sh "rm cfg01.${STACK_NAME}-config.iso"
       sh "rm /tmp/cfg01.${STACK_NAME}-config/meta-data"
+      // Calculation openssh_groups variable for old releases ( older then https://gerrit.mcp.mirantis.net/#/c/19109/)
+      opensshGroups = templateContext['default_context']['openssh_groups'].tokenize(',')
+      infraInitFile = model_path + '/infra/init.yml'
+      for (openssh_group in opensshGroups) {
+        neededClass = 'system.openssh.server.team.' + openssh_group
+        classExists = sh script: "grep $neededClass $infraInitFile", returnStatus: true
+        if(classExists == 0){
+          println "Class $neededClass found in infra/init.yaml"
+        } else {
+          println "Class $neededClass not found in infra/init.yaml. Adding it"
+          sh "$reclass_tools add-key --merge classes $neededClass $infraInitFile"
+        }
+      }
       if (openstack_enabled) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
