@@ -7,6 +7,8 @@ def remote_ssh_cmd(server, command){
 }
 node ('python') {
   currentBuild.description = STACK_NAME
+  // Checkout scm specified in job configuration
+  checkout scm
   // Configure OpenStack credentials and command
   withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
       usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
@@ -78,7 +80,7 @@ node ('python') {
       sh "cd archive/archive/validation_artifacts; for i in \$(ls ); do mv \$i ${report_prefix}.\$i ; done"
       sh "mv archive/archive/validation_artifacts/* artifacts/"
       sh "rm -rf archive"
-      sh "$vpython scripts/rewrite_rally_junut.py \$(ls artifacts/*.xml) /tmp/rewrited_junut.xml"
+      sh "$vpython ${WORKSPACE}/files/rewrite_rally_junut.py \$(ls artifacts/*.xml) /tmp/rewrited_junut.xml"
       report_cmd = "$report --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' "+
                " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' "+
                "--testrail-suite 'Rally-light' --testrail-plan-name 'Rally-light' --env 'Dev cloud' "+
@@ -100,7 +102,7 @@ node ('python') {
                "ssh $ssh_opt root@infra-k8s.mcp-scale.mirantis.net mkdir \$D; scp $ssh_opt artifacts/* root@infra-k8s.mcp-scale.mirantis.net:\$D/; "+
                "mkdir -p /tmp/$BUILD_TAG; echo '[main]' > /tmp/$BUILD_TAG/job_config.txt; "+
                "echo BUILD_URL = $BUILD_URL >> /tmp/$BUILD_TAG/job_config.txt; "+
-               "scp $ssh_opt /tmp/$BUILD_TAG/job_config.txt  root@infra-k8s.mcp-scale.mirantis.net:\$D/; rm -rf /tmp/$BUILD_TAG"
+               "scp $ssh_opt /tmp/$BUILD_TAG/job_config.txt root@infra-k8s.mcp-scale.mirantis.net:\$D/; rm -rf /tmp/$BUILD_TAG"
           }
         }
     }
