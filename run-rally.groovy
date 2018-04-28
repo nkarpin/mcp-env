@@ -73,7 +73,7 @@ node ('python') {
       report_prefix = RALLY_SCENARIOS.replaceAll("/",".")
       sh "rm -f artifacts.zip"
       // TODO need to change logic to get not last build but needed artifact
-      sh "wget --auth-no-challenge -O artifacts.zip  --user root --password r00tme '${env.JENKINS_URL}/job/run-job-on-cfg01-jenkins/lastSuccessfulBuild/artifact/*zip*/archive.zip'"
+      sh "wget --auth-no-challenge -O artifacts.zip '${env.JENKINS_URL}/job/run-job-on-cfg01-jenkins/lastSuccessfulBuild/artifact/*zip*/archive.zip'"
       sh "unzip artifacts.zip"
       sh "cd archive/archive/validation_artifacts; for i in \$(ls ); do mv \$i ${report_prefix}.\$i ; done"
       sh "mv archive/archive/validation_artifacts/* artifacts/"
