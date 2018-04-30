@@ -104,6 +104,14 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes $neededClass $infraInitFile"
       }
     }
+    // Always clone mcp-scale-jenkins user and qa_scale ssh group from master. Needed for old releases ( older then https://gerrit.mcp.mirantis.net/#/c/19499/)
+    masterMcpScaleJenkinsUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/members/mcp-scale-jenkins.yml;h=3ec3a1c417672ee74a3d607f2ce250fd6441e450;hb=refs/heads/master'"
+    masterQaScaleUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/qa_scale.yml;h=9415496f4bd99526663fa0d46766b30dc862b67c;hb=refs/heads/master'"
+    systemLevelPath = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/system"
+    McpScaleFile = systemLevelPath + '/openssh/server/team/members/mcp-scale-jenkins.yml'
+    QaScaleFile = systemLevelPath + '/openssh/server/team/qa_scale.yml'
+    sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
+    sh "curl -s ${masterQaScaleUrl} > ${QaScaleFile}"
     if (openstack_enabled) {
       source_patch_path="$WORKSPACE/cluster_settings_patch"
       println "Setting workarounds for openstack"
