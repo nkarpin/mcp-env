@@ -29,7 +29,7 @@ node ('python') {
     cfg01_ip = out.trim()
   }
   stage ('Prepare cluster for run rally'){
-    build(job: 'run-rally-prepare',
+    build(job: 'prepare-tests-mcp-env',
       parameters: [
           [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
           [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],

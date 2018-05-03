@@ -20,7 +20,7 @@ node ('python') {
   }
   stage ("Handle old heat stack") {
       if (params.DELETE_STACK){
-          build(job: 'delete-heat-stack',
+          build(job: 'delete-heat-stack-for-mcp-env',
             parameters: [
               [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
               [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
@@ -233,7 +233,7 @@ node ('python') {
     }
   }
   stage ('Deploy heat stack'){
-    build(job: 'run-heat-stack-pipeline',
+    build(job: 'create-heat-stack-for-mcp-env',
           parameters: [
             [$class: 'StringParameterValue', name: 'HEAT_ENV_FILE', value: HEAT_ENV_FILE],
             [$class: 'StringParameterValue', name: 'HEAT_TEMPLATE_FILE', value: HEAT_TEMPLATE_FILE],
@@ -268,7 +268,7 @@ node ('python') {
       deploy_settings = deploy_settings + " stacklight"
     }
     try {
-      build(job: 'run-cicd-day01-image',
+      build(job: 'run-deploy-job-on-cfg01',
             parameters: [
               [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
               [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
@@ -311,7 +311,7 @@ node ('python') {
     }
   }
   stage('Run rally tests'){
-    build(job: 'run-rally',
+    build(job: 'run-tests-mcp-env',
       parameters: [
         [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
         [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],

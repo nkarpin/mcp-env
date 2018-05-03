@@ -26,7 +26,7 @@ node ('python') {
     }
     stage ('Deploy heat stack'){
         if (params.DELETE_STACK){
-            build(job: 'delete-heat-stack',
+            build(job: 'delete-heat-stack-for-mcp-env',
               parameters: [
                 [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
                 [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
