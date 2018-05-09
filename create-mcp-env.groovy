@@ -10,6 +10,12 @@ node ('python') {
           env.OS_USERNAME = OS_USERNAME
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
+          if (OPENSTACK_ENVIRONMENT == 'presales') {
+            env.OS_AUTH_URL='https://lab.mirantis.com:5000/v2.0'
+            env.OS_REGION_NAME='RegionOne'
+            env.OS_ENDPOINT_TYPE='public'
+            env.OS_IDENTITY_API_VERSION='2'
+          }
   }
   openstack = "set +x; venv/bin/openstack "
   reclass_tools = "venv/bin/reclass-tools"
@@ -25,6 +31,7 @@ node ('python') {
               [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
               [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
               [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+              [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT]
             ])
       }
   }
@@ -112,53 +119,55 @@ node ('python') {
     QaScaleFile = systemLevelPath + '/openssh/server/team/qa_scale.yml'
     sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
     sh "curl -s ${masterQaScaleUrl} > ${QaScaleFile}"
-    if (openstack_enabled) {
-      source_patch_path="$WORKSPACE/cluster_settings_patch"
-      println "Setting workarounds for openstack"
-      // Modify gateway network settings
-      if ( !opencontrail_enabled ) {
-        sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
+    if (!STACK_FULL.toBoolean()) {
+      if (openstack_enabled) {
+        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        println "Setting workarounds for openstack"
+        // Modify gateway network settings
+        if ( !opencontrail_enabled ) {
+          sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
+        }
+        // Modify compute yaml
+        sh "mkdir $model_path/openstack/scale-ci-patch"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
+        sh "$reclass_tools add-key --merge classes system.cinder.volume.single $model_path/openstack/compute/init.yml"
+        sh "$reclass_tools add-key --merge classes system.cinder.volume.notification.messagingv2 $model_path/openstack/compute/init.yml"
+        sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
+        sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
+        sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
+        if (!opencontrail_enabled) {
+          sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
+        }
+        // Modify kvm nodes
+        sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
+        sh "sed -i '/system.salt.control.virt/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_control_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_proxy_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_database_cluster/d' $model_path/infra/kvm.yml"
+        sh "sed -i '/system.salt.control.cluster.openstack_message_queue_cluster/d' $model_path/infra/kvm.yml"
       }
-      // Modify compute yaml
-      sh "mkdir $model_path/openstack/scale-ci-patch"
-      sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
-      sh "$reclass_tools add-key --merge classes system.cinder.volume.single $model_path/openstack/compute/init.yml"
-      sh "$reclass_tools add-key --merge classes system.cinder.volume.notification.messagingv2 $model_path/openstack/compute/init.yml"
-      sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
-      sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
-      sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
-      if (!opencontrail_enabled) {
-        sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
+      if (kubernetes_enabled) {
+        println "Setting workarounds for kubernetes"
+        // useless default networking
+        sh "sed -i 's/\\(^- cluster.${STACK_NAME}.kubernetes.networking.compute\\)/#\\1/' $model_path/kubernetes/compute.yml"
+        // change keepalived VRID of K8S VIP
+        if (templateContext['default_context']['k8s_keepalived_vip_vrid']) {
+          def k8s_keepalived_vip_vrid = templateContext['default_context']['k8s_keepalived_vip_vrid']
+          sh "$reclass_tools add-key parameters._param.keepalived_vip_virtual_router_id $k8s_keepalived_vip_vrid $model_path/kubernetes/control.yml"
+        }
+        // insecure API binding
+        if (templateContext['default_context']['k8s_api_insecure_bind'] == 'True') {
+          sh "$reclass_tools add-key parameters.kubernetes.master.apiserver.insecure_address 0.0.0.0 $model_path/kubernetes/control.yml"
+        }
       }
-      // Modify kvm nodes
-      sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
-      sh "sed -i '/system.salt.control.virt/d' $model_path/infra/kvm.yml"
-      sh "sed -i '/system.salt.control.cluster.openstack_control_cluster/d' $model_path/infra/kvm.yml"
-      sh "sed -i '/system.salt.control.cluster.openstack_proxy_cluster/d' $model_path/infra/kvm.yml"
-      sh "sed -i '/system.salt.control.cluster.openstack_database_cluster/d' $model_path/infra/kvm.yml"
-      sh "sed -i '/system.salt.control.cluster.openstack_message_queue_cluster/d' $model_path/infra/kvm.yml"
-    }
-    if (kubernetes_enabled) {
-      println "Setting workarounds for kubernetes"
-      // useless default networking
-      sh "sed -i 's/\\(^- cluster.${STACK_NAME}.kubernetes.networking.compute\\)/#\\1/' $model_path/kubernetes/compute.yml"
-      // change keepalived VRID of K8S VIP
-      if (templateContext['default_context']['k8s_keepalived_vip_vrid']) {
-        def k8s_keepalived_vip_vrid = templateContext['default_context']['k8s_keepalived_vip_vrid']
-        sh "$reclass_tools add-key parameters._param.keepalived_vip_virtual_router_id $k8s_keepalived_vip_vrid $model_path/kubernetes/control.yml"
+      // Modify opencontrail network
+      if ( opencontrail_enabled ) {
+        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
+        sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
+        sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
+        sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
       }
-      // insecure API binding
-      if (templateContext['default_context']['k8s_api_insecure_bind'] == 'True') {
-        sh "$reclass_tools add-key parameters.kubernetes.master.apiserver.insecure_address 0.0.0.0 $model_path/kubernetes/control.yml"
-      }
-    }
-    // Modify opencontrail network
-    if ( opencontrail_enabled ) {
-      source_patch_path="$WORKSPACE/cluster_settings_patch"
-      sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
-      sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
-      sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
-      sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
     }
   }
   stage ('Build config drive image'){
@@ -243,8 +252,6 @@ node ('python') {
   stage ('Deploy heat stack'){
     build(job: 'create-heat-stack-for-mcp-env',
           parameters: [
-            [$class: 'StringParameterValue', name: 'HEAT_ENV_FILE', value: HEAT_ENV_FILE],
-            [$class: 'StringParameterValue', name: 'HEAT_TEMPLATE_FILE', value: HEAT_TEMPLATE_FILE],
             [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
             [$class: 'StringParameterValue', name: 'OS_AZ', value: OS_AZ],
             [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
@@ -252,6 +259,10 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT],
             [$class: 'StringParameterValue', name: 'MCP_VERSION', value: mcpVersion],
             [$class: 'StringParameterValue', name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX],
+            [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT],
+            [$class: 'StringParameterValue', name: 'STACK_FULL', value: STACK_FULL],
+            [$class: 'StringParameterValue', name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH],
+            [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
             [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
             [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC]
           ])
@@ -281,7 +292,8 @@ node ('python') {
               [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
               [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
               [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-              [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL]
+              [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
+              [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT]
             ])
     } catch (Exception e) {
       job_failed = true
@@ -318,20 +330,22 @@ node ('python') {
       throw job_error
     }
   }
-  stage('Run rally tests'){
-    build(job: 'run-tests-mcp-env',
-      parameters: [
-        [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-        [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-        [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-        [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
-        [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
-        [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
-        [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
-        [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
-        [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
-        [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
-        [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
-      ])
+  if (OPENSTACK_ENVIRONMENT == 'devcloud') {
+    stage('Run rally tests'){
+      build(job: 'run-tests-mcp-env',
+        parameters: [
+          [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+          [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
+          [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+          [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
+          [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
+          [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
+          [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
+          [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
+          [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
+          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
+          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
+        ])
+    }
   }
 }

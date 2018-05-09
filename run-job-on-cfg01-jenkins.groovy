@@ -6,6 +6,12 @@ node ('python') {
           env.OS_USERNAME = OS_USERNAME
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
+          if (OPENSTACK_ENVIRONMENT == 'presales') {
+            env.OS_AUTH_URL='https://lab.mirantis.com:5000/v2.0'
+            env.OS_REGION_NAME='RegionOne'
+            env.OS_ENDPOINT_TYPE='public'
+            env.OS_IDENTITY_API_VERSION='2'
+          }
   }
   openstack = "set +x; venv/bin/openstack "
   jenkins_user = "admin"
