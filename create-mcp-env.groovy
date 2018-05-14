@@ -131,6 +131,19 @@ node ('python') {
         if ( !opencontrail_enabled ) {
           sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
         }
+        // Modify MAAS yaml if it necessary
+        if ( MAAS_ENABLE ) {
+          sh "mkdir $model_path/infra/scale-ci-patch"
+          sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
+          sh "cp -f $source_patch_path/cmp_template.yml.src $model_path/infra/scale-ci-patch/cmp_template.yml"
+          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_dhcp_range $model_path/infra/maas.yml"
+          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.cmp_template $model_path/infra/maas.yml"
+          //NOTE: differents from a customer setup.
+          //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
+          //in another way will lost external connection for this nodes.
+          sh "cp -f $source_patch_path/dhcp_snippets.yml.src $model_path/infra/scale-ci-patch/dhcp_snippets.yml"
+          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
+        }
         // Modify compute yaml
         sh "mkdir $model_path/openstack/scale-ci-patch"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
@@ -139,8 +152,11 @@ node ('python') {
         sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
         sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
         sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
-        if (!opencontrail_enabled) {
+        if (!opencontrail_enabled || !MAAS_ENABLE) {
           sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
+        }
+        if ( MAAS_ENABLE ){
+          sh "cp -f $source_patch_path/openstack-compute-maas-net.yml.src $model_path/openstack/networking/compute.yml"
         }
         // Modify kvm nodes
         sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
@@ -167,7 +183,12 @@ node ('python') {
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
-        sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
+        if ( MAAS_ENABLE ) {
+          sh "cp -f $source_patch_path/openstack-compute-opencontrail-net-maas.yml.src $model_path/opencontrail/networking/compute.yml"
+        }
+        else {
+          sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
+        }
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
         sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
@@ -268,8 +289,37 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH],
             [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
             [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-            [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC]
+            [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC],
+            [$class: 'StringParameterValue', name: 'MAAS_ENABLE', value: MAAS_ENABLE]
           ])
+  }
+  stage ('Provision compute hosts'){
+    if ( MAAS_ENABLE && !kubernetes_enabled ) {
+      sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME", returnStdout: true
+      out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
+      cfg01_ip = out.trim()
+      ssh_user = "mcp-scale-jenkins"
+      ssh_opt = " -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+      ssh_cmd = "ssh $ssh_opt"
+      ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
+      sshagent (credentials: ['mcp-scale-jenkins']) {
+        sh "scp $ssh_opt /tmp/cmp_template.yml.src $ssh_user@$cfg01_ip:cmp_template.yml.src"
+        sh "scp $ssh_opt /tmp/dhcp_snippets.yml.src $ssh_user@$cfg01_ip:dhcp_snippets.yml.src"
+        sh "$ssh_cmd_cfg01 sudo cp dhcp_snippets.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/dhcp_snippets.yml"
+        sh "$ssh_cmd_cfg01 sudo cp cmp_template.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/cmp_template.yml"
+
+        //Fix for the https://mirantis.jira.com/browse/PROD-19174
+        sh "$ssh_cmd_cfg01 wget https://raw.githubusercontent.com/salt-formulas/salt-formula-maas/master/_modules/maas.py"
+        sh "$ssh_cmd_cfg01 sudo cp maas.py /srv/salt/env/prd/_modules/maas.py"
+
+        //Apply several fixes for MAAS and provision compute hosts
+        sh "scp $ssh_opt $WORKSPACE/files/fixes-for-maas.sh $ssh_user@$cfg01_ip:fixes-for-maas.sh"
+        sh "$ssh_cmd_cfg01 sudo bash +x fixes-for-maas.sh"
+      }
+    }
+    else {
+      println "MAAS provisioning is not enabled. Skipping.."
+    }
   }
   stage ('Deploy open stack'){
     job_failed = false

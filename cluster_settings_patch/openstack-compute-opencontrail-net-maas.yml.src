@@ -1,0 +1,33 @@
+parameters:
+  linux:
+    network:
+      interface:
+        one2:
+          enabled: true
+          name: one2
+          type: eth
+          proto: dhcp
+        one1:
+          enabled: true
+          name: one1
+          type: eth
+          proto: static
+          address: ${_param:single_address}
+          netmask: ${_param:control_network_netmask}
+        one3:
+          enabled: true
+          name: one3
+          type: eth
+          proto: manual
+        vhost0:
+          enabled: true
+          type: eth
+          address: ${_param:tenant_address}
+          netmask: ${_param:tenant_network_netmask}
+          pre_up_cmds:
+          - /usr/lib/contrail/if-vhost0
+          use_interfaces:
+          - one3
+          name_servers:
+          - ${_param:dns_server01}
+          - ${_param:dns_server02}

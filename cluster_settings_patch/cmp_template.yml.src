@@ -1,0 +1,13 @@
+parameters:
+  maas:
+    region:
+      machines:
+        cmp1:
+          interface:
+            mac: 02:2d:af:a6:f0:7c
+            mode: static
+            ip: 10.10.100.16
+            subnet: 10.10.0.0/16
+          power_type: ipmi
+          power_parameters:
+            power_address: 192.168.0.0

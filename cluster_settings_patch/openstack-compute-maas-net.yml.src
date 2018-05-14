@@ -1,0 +1,40 @@
+parameters:
+  linux:
+    network:
+      bridge: openvswitch
+      interface:
+        one2:
+          enabled: true
+          name: one2
+          type: eth
+          proto: dhcp
+        one1:
+          enabled: true
+          name: one1
+          type: eth
+          proto: manual
+          ipflush_onchange: true
+          restart_on_ipflush: true
+        br-ctl:
+          enabled: true
+          type: bridge
+          proto: static
+          address: ${_param:single_address}
+          netmask: ${_param:control_network_netmask}
+          use_interfaces:
+          - one1
+        one3:
+          enabled: true
+          name: one3
+          type: eth
+          proto: manual
+          ipflush_onchange: true
+          restart_on_ipflush: true
+        br-mesh:
+          enabled: true
+          type: bridge
+          proto: static
+          address: ${_param:tenant_address}
+          netmask: ${_param:tenant_network_netmask}
+          use_interfaces:
+          - one3
