@@ -59,10 +59,14 @@ node ('python') {
         openstack_enabled = true
         templateContext['default_context']['openstack_enabled'] = "True"
         templateContext['default_context']['kubernetes_enabled'] = "False"
+        templateContext['default_context']['platform'] = "openstack_enabled"
+        templateContext['default_context']['public_host'] = "\${_param:openstack_proxy_address}"
       } else if ( it == "k8s" ) {
         kubernetes_enabled = true
         templateContext['default_context']['kubernetes_enabled'] = "True"
         templateContext['default_context']['openstack_enabled'] = "False"
+        templateContext['default_context']['platform'] = "kubernetes_enabled"
+        templateContext['default_context']['public_host'] = "\${_param:infra_config_address}"
       }
       if ( it == "stacklight") {
         stacklight_enabled = true
@@ -332,20 +336,25 @@ node ('python') {
   }
   if (OPENSTACK_ENVIRONMENT == 'devcloud') {
     stage('Run rally tests'){
-      build(job: 'run-tests-mcp-env',
-        parameters: [
-          [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-          [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-          [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-          [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
-          [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
-          [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
-          [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
-          [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
-          [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
-          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
-          [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
-        ])
+      if (! kubernetes_enabled) {
+        build(job: 'run-tests-mcp-env',
+          parameters: [
+            [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+            [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
+            [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+            [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
+            [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
+            [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
+            [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
+            [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
+            [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
+            [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
+            [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
+          ]
+        )
+      } else {
+        println "Kubernetes testing will be added soon"
+      }
     }
   }
 }
