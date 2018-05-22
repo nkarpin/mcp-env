@@ -16,7 +16,7 @@ salt-call state.sls maas
 maas $PROFILE vlan update fabric-0 0 dhcp_on=true primary_rack=cfg01
 salt "*" cmd.run "dhclient -r ens4; dhclient ens4"
 
-apt -y install python3-novaclient
+apt -y install python3-novaclient/xenial-updates
 
 #Temp fix for https://gerrit.mcp.mirantis.net/#/c/20105/ patch
 #sed -i.bak "/power_parameters_power_address/d" /srv/salt/env/prd/_modules/maas.py

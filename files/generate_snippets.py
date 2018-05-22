@@ -44,7 +44,7 @@ cmp_template = Template('''
           power_parameters:
             power_type: nova
             power_nova_id: {{uuid}}
-            power_os_tenantname: {{tenant_id}}
+            power_os_tenantname: {{tenant_name}}
             power_os_username: {{os_username}}
             power_os_password: {{os_password}}
             power_os_authurl: {{os_authurl}}
@@ -68,7 +68,7 @@ for server in conn.compute.servers(name=sys.argv[1]):
                 'mac_addr': port_list[0]['OS-EXT-IPS-MAC:mac_addr'],
                 'ip_addr':port_list[0]['addr'],
                 'uuid': server.id,
-                'tenant_id': server.project_id,
+                'tenant_name': os.environ['OS_PROJECT_NAME'],
                 'os_username': os.environ['OS_USERNAME'],
                 'os_password': os.environ['OS_PASSWORD'],
                 'os_authurl': os.environ['OS_AUTH_URL']
