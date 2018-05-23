@@ -132,7 +132,7 @@ node ('python') {
           sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
         }
         // Modify MAAS yaml if it necessary
-        if ( MAAS_ENABLE ) {
+        if ( MAAS_ENABLE.toBoolean() ) {
           sh "mkdir $model_path/infra/scale-ci-patch"
           sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
           sh "cp -f $source_patch_path/cmp_template.yml.src $model_path/infra/scale-ci-patch/cmp_template.yml"
@@ -152,10 +152,10 @@ node ('python') {
         sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
         sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
         sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
-        if (!opencontrail_enabled || !MAAS_ENABLE) {
+        if (!opencontrail_enabled || !MAAS_ENABLE.toBoolean() ) {
           sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
         }
-        if ( MAAS_ENABLE ){
+        if ( MAAS_ENABLE.toBoolean() ){
           sh "cp -f $source_patch_path/openstack-compute-maas-net.yml.src $model_path/openstack/networking/compute.yml"
         }
         // Modify kvm nodes
@@ -183,7 +183,7 @@ node ('python') {
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
-        if ( MAAS_ENABLE ) {
+        if ( MAAS_ENABLE.toBoolean() ) {
           sh "cp -f $source_patch_path/openstack-compute-opencontrail-net-maas.yml.src $model_path/opencontrail/networking/compute.yml"
         }
         else {
@@ -294,7 +294,7 @@ node ('python') {
           ])
   }
   stage ('Provision compute hosts'){
-    if ( MAAS_ENABLE && !kubernetes_enabled ) {
+    if ( MAAS_ENABLE.toBoolean() && !kubernetes_enabled ) {
       sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME", returnStdout: true
       out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
       cfg01_ip = out.trim()
