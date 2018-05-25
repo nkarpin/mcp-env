@@ -145,6 +145,7 @@ node ('python') {
           sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
         }
         // Modify compute yaml
+        // Workaround for PROD-20257 to set up LVM on compute nodes as a backend for Cinder
         sh "mkdir $model_path/openstack/scale-ci-patch"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
         sh "$reclass_tools add-key --merge classes system.cinder.volume.single $model_path/openstack/compute/init.yml"
