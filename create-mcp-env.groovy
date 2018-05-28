@@ -130,9 +130,9 @@ node ('python') {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
         sh "mkdir $model_path/infra/scale-ci-patch"
         sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
-        sh "cp -f $source_patch_path/cmp_template.yml.src $model_path/infra/scale-ci-patch/cmp_template.yml"
+        sh "cp -f $source_patch_path/machines_template.yml.src $model_path/infra/scale-ci-patch/machines_template.yml"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_dhcp_range $model_path/infra/maas.yml"
-        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.cmp_template $model_path/infra/maas.yml"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.machines_template $model_path/infra/maas.yml"
         //NOTE: differents from a customer setup.
         //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
         //in another way will lost external connection for this nodes.
@@ -143,7 +143,7 @@ node ('python') {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
-        if ( !opencontrail_enabled ) {
+        if ( !opencontrail_enabled || !MAAS_ENABLE.toBoolean() ) {
           sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
         }
         // Modify compute yaml
@@ -160,6 +160,9 @@ node ('python') {
         }
         if ( MAAS_ENABLE.toBoolean() ){
           sh "cp -f $source_patch_path/openstack-compute-maas-net.yml.src $model_path/openstack/networking/compute.yml"
+          if ( !opencontrail_enabled ){
+            sh "cp -f $source_patch_path/openstack-gateway-maas-net.yml.src $model_path/openstack/networking/gateway.yml"
+          }
         }
         // Modify kvm nodes
         sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
@@ -306,10 +309,10 @@ node ('python') {
       ssh_cmd = "ssh $ssh_opt"
       ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
       sshagent (credentials: ['mcp-scale-jenkins']) {
-        sh "scp $ssh_opt /tmp/cmp_template.yml.src $ssh_user@$cfg01_ip:cmp_template.yml.src"
+        sh "scp $ssh_opt /tmp/machines_template.yml.src $ssh_user@$cfg01_ip:machines_template.yml.src"
         sh "scp $ssh_opt /tmp/dhcp_snippets.yml.src $ssh_user@$cfg01_ip:dhcp_snippets.yml.src"
         sh "$ssh_cmd_cfg01 sudo cp dhcp_snippets.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/dhcp_snippets.yml"
-        sh "$ssh_cmd_cfg01 sudo cp cmp_template.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/cmp_template.yml"
+        sh "$ssh_cmd_cfg01 sudo cp machines_template.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/machines_template.yml"
 
         //Fix for the https://mirantis.jira.com/browse/PROD-19174
         sh "$ssh_cmd_cfg01 wget https://raw.githubusercontent.com/salt-formulas/salt-formula-maas/master/_modules/maas.py"
