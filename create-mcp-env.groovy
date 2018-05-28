@@ -124,25 +124,27 @@ node ('python') {
     sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
     sh "curl -s ${masterQaScaleUrl} > ${QaScaleFile}"
     if (!STACK_FULL.toBoolean()) {
+      println "Setting workarounds for MAAS"
+      // Modify MAAS yaml if it necessary
+      if ( MAAS_ENABLE.toBoolean() ) {
+        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        sh "mkdir $model_path/infra/scale-ci-patch"
+        sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
+        sh "cp -f $source_patch_path/cmp_template.yml.src $model_path/infra/scale-ci-patch/cmp_template.yml"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_dhcp_range $model_path/infra/maas.yml"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.cmp_template $model_path/infra/maas.yml"
+        //NOTE: differents from a customer setup.
+        //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
+        //in another way will lost external connection for this nodes.
+        sh "cp -f $source_patch_path/dhcp_snippets.yml.src $model_path/infra/scale-ci-patch/dhcp_snippets.yml"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
+      }
       if (openstack_enabled) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
         if ( !opencontrail_enabled ) {
           sh "test -d $model_path/openstack && cp -f $source_patch_path/gtw-net.yml.src $model_path/openstack/networking/gateway.yml || true"
-        }
-        // Modify MAAS yaml if it necessary
-        if ( MAAS_ENABLE.toBoolean() ) {
-          sh "mkdir $model_path/infra/scale-ci-patch"
-          sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
-          sh "cp -f $source_patch_path/cmp_template.yml.src $model_path/infra/scale-ci-patch/cmp_template.yml"
-          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_dhcp_range $model_path/infra/maas.yml"
-          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.cmp_template $model_path/infra/maas.yml"
-          //NOTE: differents from a customer setup.
-          //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
-          //in another way will lost external connection for this nodes.
-          sh "cp -f $source_patch_path/dhcp_snippets.yml.src $model_path/infra/scale-ci-patch/dhcp_snippets.yml"
-          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
         }
         // Modify compute yaml
         // Workaround for PROD-20257 to set up LVM on compute nodes as a backend for Cinder
@@ -295,7 +297,7 @@ node ('python') {
           ])
   }
   stage ('Provision compute hosts'){
-    if ( MAAS_ENABLE.toBoolean() && !kubernetes_enabled ) {
+    if ( MAAS_ENABLE.toBoolean() ) {
       sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME", returnStdout: true
       out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
       cfg01_ip = out.trim()
@@ -316,6 +318,17 @@ node ('python') {
         //Apply several fixes for MAAS and provision compute hosts
         sh "scp $ssh_opt $WORKSPACE/files/fixes-for-maas.sh $ssh_user@$cfg01_ip:fixes-for-maas.sh"
         sh "$ssh_cmd_cfg01 sudo bash +x fixes-for-maas.sh"
+
+        //Execute send.event from k8s compute hosts for autoregistrarion
+        if ( kubernetes_enabled ){
+          sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"dhclient one1\\\" "
+          //Workaround for https://mirantis.jira.com/browse/PROD-20216
+          sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"swapoff -a\\\" "
+          //Workaround for https://mirantis.jira.com/browse/PROD-20185
+          sh "scp $ssh_opt $WORKSPACE/files/compute_autoregistration.sh $ssh_user@$cfg01_ip:compute_autoregistration.sh"
+          sh "$ssh_cmd_cfg01 sudo salt-cp \\\"cmp*\\\" compute_autoregistration.sh /tmp/autoreg.sh"
+          sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"bash +x /tmp/autoreg.sh $STACK_NAME\\\" "
+        }
       }
     }
     else {
