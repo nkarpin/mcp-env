@@ -20,9 +20,9 @@ dhcp_file.write('''parameters:
     region:
       dhcp_snippets:''')
 
-cmp_file = open ("/tmp/cmp_template.yml.src", "w")
+machines_file = open ("/tmp/machines_template.yml.src", "w")
 
-cmp_file.write('''parameters:
+machines_file.write('''parameters:
   maas:
     region:
       machines:''')
@@ -34,7 +34,7 @@ dhcp_template = Template('''
           enabled: true
           subnet: 10.10.0.0/16''')
 
-cmp_template = Template('''
+machines_template = Template('''
         {{name}}:
           interface:
             mac: {{mac_addr}}
@@ -61,9 +61,9 @@ for server in conn.compute.servers(name=sys.argv[1]):
     try:
         address_list = server.addresses[sys.argv[1]+"-net01"]
         port_list = json.loads(json.dumps(address_list))
-        if "cmp" in server.name:
+        if ( ( "cmp" in server.name ) or ( "gtw" in server.name ) ):
             server_name = server.name.split(".")[0]
-            cmp_info = {
+            node_info = {
                 'name': server_name,
                 'mac_addr': port_list[0]['OS-EXT-IPS-MAC:mac_addr'],
                 'ip_addr':port_list[0]['addr'],
@@ -73,7 +73,7 @@ for server in conn.compute.servers(name=sys.argv[1]):
                 'os_password': os.environ['OS_PASSWORD'],
                 'os_authurl': os.environ['OS_AUTH_URL']
             }
-            cmp_file.write (cmp_template.render(cmp_info))
+            machines_file.write (machines_template.render(node_info))
             conn.compute.stop_server(server.id)
         else:
             node_info = {
@@ -86,4 +86,4 @@ for server in conn.compute.servers(name=sys.argv[1]):
         print ("The server with name %s from another stack" % server.name)
 
 dhcp_file.close()
-cmp_file.close()
+machines_file.close()
