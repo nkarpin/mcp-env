@@ -189,14 +189,16 @@ node ('python') {
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
         source_patch_path="$WORKSPACE/cluster_settings_patch"
+        //Workaround for https://mirantis.jira.com/browse/PROD-19260
         if ( MAAS_ENABLE.toBoolean() ) {
           sh "cp -f $source_patch_path/openstack-compute-opencontrail-net-maas.yml.src $model_path/opencontrail/networking/compute.yml"
+          sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: one3/' $model_path/opencontrail/init.yml"
         }
         else {
           sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
+          sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
         }
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
-        sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
         sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
       }
     }
@@ -299,7 +301,7 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'MAAS_ENABLE', value: MAAS_ENABLE]
           ])
   }
-  stage ('Provision compute hosts'){
+  stage ('Provision nodes using MAAS'){
     if ( MAAS_ENABLE.toBoolean() ) {
       sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME", returnStdout: true
       out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
