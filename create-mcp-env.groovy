@@ -165,7 +165,12 @@ node ('python') {
           }
         }
         // Modify kvm nodes
-        sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
+        if ( MAAS_ENABLE.toBoolean() ){
+          sh "cp -f $source_patch_path/openstack-kvm-maas-net.yml.src $model_path/infra/networking/kvm.yml"
+        }
+        else {
+          sh "cp -f $source_patch_path/openstack-kvm-net.yml.src $model_path/infra/networking/kvm.yml"
+        }
         sh "sed -i '/system.salt.control.virt/d' $model_path/infra/kvm.yml"
         sh "sed -i '/system.salt.control.cluster.openstack_control_cluster/d' $model_path/infra/kvm.yml"
         sh "sed -i '/system.salt.control.cluster.openstack_proxy_cluster/d' $model_path/infra/kvm.yml"

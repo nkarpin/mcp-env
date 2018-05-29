@@ -61,7 +61,7 @@ for server in conn.compute.servers(name=sys.argv[1]):
     try:
         address_list = server.addresses[sys.argv[1]+"-net01"]
         port_list = json.loads(json.dumps(address_list))
-        if ( ( "cmp" in server.name ) or ( "gtw" in server.name ) ):
+        if ( ( "cmp" in server.name ) or ( "gtw" in server.name ) or ( "kvm" in server.name ) ):
             server_name = server.name.split(".")[0]
             node_info = {
                 'name': server_name,
