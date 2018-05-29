@@ -35,7 +35,7 @@ node ('python') {
            }
        }
        print ("Check keypair $STACK_NAME")
-       out = sh script: "$openstack keypair list | grep $STACK_NAME || true", returnStdout: true
+       out = sh script: "$openstack keypair list | grep ' $STACK_NAME ' || true", returnStdout: true
        if (out.trim() != ""){
           print ("Delete keypair $STACK_NAME")
           sh "$openstack keypair delete $STACK_NAME"
