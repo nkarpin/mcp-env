@@ -75,6 +75,21 @@ for server in conn.compute.servers(name=sys.argv[1]):
             }
             machines_file.write (machines_template.render(node_info))
             conn.compute.stop_server(server.id)
+        #If we build kubernetes cluster we provision controllers by MAAS
+        elif ((sys.argv[2] == "yes") and ( "ctl" in server.name )):
+            server_name = server.name.split(".")[0]
+            node_info = {
+                'name': server_name,
+                'mac_addr': port_list[0]['OS-EXT-IPS-MAC:mac_addr'],
+                'ip_addr':port_list[0]['addr'],
+                'uuid': server.id,
+                'tenant_name': os.environ['OS_PROJECT_NAME'],
+                'os_username': os.environ['OS_USERNAME'],
+                'os_password': os.environ['OS_PASSWORD'],
+                'os_authurl': os.environ['OS_AUTH_URL']
+            }
+            machines_file.write (machines_template.render(node_info))
+            conn.compute.stop_server(server.id)
         else:
             node_info = {
                 'name': server.name,

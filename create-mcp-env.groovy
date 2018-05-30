@@ -82,6 +82,7 @@ node ('python') {
         templateContext['default_context']['openstack_network_engine'] = "opencontrail"
       }
     }
+    if ( MAAS_ENABLE.toBoolean() && kubernetes_enabled ) { templateContext['default_context']['kubernetes_keepalived_vip_interface'] = "one1" }
     writeYaml file: tmp_template_file, data: templateContext
     COOKIECUTTER_TEMPLATE_CONTEXT = readFile tmp_template_file
     archiveArtifacts artifacts: JOB_NAME + ".yaml"
@@ -308,7 +309,9 @@ node ('python') {
   }
   stage ('Provision nodes using MAAS'){
     if ( MAAS_ENABLE.toBoolean() ) {
-      sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME", returnStdout: true
+      def kubernetes = "no"
+      if ( kubernetes_enabled ) { kubernetes = "yes" }
+      sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME $kubernetes", returnStdout: true
       out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
       cfg01_ip = out.trim()
       ssh_user = "mcp-scale-jenkins"
@@ -332,8 +335,10 @@ node ('python') {
         //Execute send.event from k8s compute hosts for autoregistrarion
         if ( kubernetes_enabled ){
           sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"dhclient one1\\\" "
+          sh "$ssh_cmd_cfg01 sudo salt \\\"ctl*\\\" cmd.run \\\"dhclient one1\\\" "
           //Workaround for https://mirantis.jira.com/browse/PROD-20216
           sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"swapoff -a\\\" "
+          sh "$ssh_cmd_cfg01 sudo salt \\\"ctl*\\\" cmd.run \\\"swapoff -a\\\" "
           //Workaround for https://mirantis.jira.com/browse/PROD-20185
           sh "scp $ssh_opt $WORKSPACE/files/compute_autoregistration.sh $ssh_user@$cfg01_ip:compute_autoregistration.sh"
           sh "$ssh_cmd_cfg01 sudo salt-cp \\\"cmp*\\\" compute_autoregistration.sh /tmp/autoreg.sh"
