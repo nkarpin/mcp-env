@@ -22,7 +22,7 @@ node ('python') {
   report = "venv/bin/report"
   git = "GIT_SSH_COMMAND='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' git"
   stage ('Build venv'){
-      sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient git+https://github.com/dis-xcom/reclass_tools git+https://github.com/dis-xcom/testrail_reporter"
+      sh "virtualenv venv; venv/bin/pip install \"cmd2<0.9.0\" python-openstackclient python-heatclient git+https://github.com/dis-xcom/reclass_tools git+https://github.com/dis-xcom/testrail_reporter"
   }
   stage ("Handle old heat stack") {
       if (params.DELETE_STACK){
