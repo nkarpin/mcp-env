@@ -206,6 +206,8 @@ node ('python') {
         }
         sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
+        sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/analytics.yml"
+        sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/control.yml"
       }
     }
   }
