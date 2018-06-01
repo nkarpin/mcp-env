@@ -2,7 +2,7 @@ node ('python') {
     currentBuild.description = STACK_NAME
     // Configure OpenStack credentials and command
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
-        usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
+        usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD'], ]) {
             env.OS_USERNAME = OS_USERNAME
             env.OS_PASSWORD = OS_PASSWORD
             env.OS_PROJECT_NAME = OS_PROJECT_NAME

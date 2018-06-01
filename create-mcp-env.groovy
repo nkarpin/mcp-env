@@ -6,7 +6,7 @@ node ('python') {
   checkout scm
   // Configure OpenStack credentials and command
   withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
-      usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
+      usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD'], ]) {
           env.OS_USERNAME = OS_USERNAME
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
@@ -55,31 +55,34 @@ node ('python') {
     cicd_enabled = false
     templateContext['default_context']['cicd_enabled'] = "False"
     stack_install_options.each {
-      if ( it == "openstack" ) {
-        openstack_enabled = true
-        templateContext['default_context']['openstack_enabled'] = "True"
-        templateContext['default_context']['kubernetes_enabled'] = "False"
-        templateContext['default_context']['platform'] = "openstack_enabled"
-        templateContext['default_context']['public_host'] = "\${_param:openstack_proxy_address}"
-      } else if ( it == "k8s" ) {
-        kubernetes_enabled = true
-        templateContext['default_context']['kubernetes_enabled'] = "True"
-        templateContext['default_context']['openstack_enabled'] = "False"
-        templateContext['default_context']['platform'] = "kubernetes_enabled"
-        templateContext['default_context']['public_host'] = "\${_param:infra_config_address}"
-      }
-      if ( it == "stacklight") {
-        stacklight_enabled = true
-        templateContext['default_context']['stacklight_enabled'] = "True"
-      }
-      if ( it == "cicd") {
-        cicd_enabled = true
-        templateContext['default_context']['cicd_enabled'] = "True"
-      }
-      if ( it == "opencontrail") {
-        opencontrail_enabled = true
-        templateContext['default_context']['opencontrail_enabled'] = "True"
-        templateContext['default_context']['openstack_network_engine'] = "opencontrail"
+      switch( it ) {
+        case "openstack":
+          openstack_enabled = true
+          templateContext['default_context']['openstack_enabled'] = "True"
+          templateContext['default_context']['kubernetes_enabled'] = "False"
+          templateContext['default_context']['platform'] = "openstack_enabled"
+          templateContext['default_context']['public_host'] = "\${_param:openstack_proxy_address}"
+          break
+        case "k8s":
+          kubernetes_enabled = true
+          templateContext['default_context']['kubernetes_enabled'] = "True"
+          templateContext['default_context']['openstack_enabled'] = "False"
+          templateContext['default_context']['platform'] = "kubernetes_enabled"
+          templateContext['default_context']['public_host'] = "\${_param:infra_config_address}"
+          break
+        case "stacklight":
+          stacklight_enabled = true
+          templateContext['default_context']['stacklight_enabled'] = "True"
+          break
+        case "cicd":
+          cicd_enabled = true
+          templateContext['default_context']['cicd_enabled'] = "True"
+          break
+        case "opencontrail":
+          opencontrail_enabled = true
+          templateContext['default_context']['opencontrail_enabled'] = "True"
+          templateContext['default_context']['openstack_network_engine'] = "opencontrail"
+          break
       }
     }
     if ( MAAS_ENABLE.toBoolean() && kubernetes_enabled ) { templateContext['default_context']['kubernetes_keepalived_vip_interface'] = "one1" }
@@ -229,7 +232,7 @@ node ('python') {
       mcpVersion = 'testing'
     }
     vcpImages = ["ubuntu-16-04-x64-mcp",
-                 "ubuntu-14-04-x64-mcp"]
+                 "ubuntu-14-04-x64-mcp", ]
     for (vcpImage in vcpImages) {
       vmImageUrl = "http://ci.mcp.mirantis.net:8085/images/${vcpImage}${mcpVersion}.qcow2"
       // Get md5sum of the image which we need
@@ -398,7 +401,10 @@ node ('python') {
   }
   if (OPENSTACK_ENVIRONMENT == 'devcloud') {
     stage('Run rally tests'){
-      if (! kubernetes_enabled) {
+      if ( kubernetes_enabled ) {
+        println "Kubernetes testing will be added soon"
+      }
+      else {
         build(job: 'run-tests-mcp-env',
           parameters: [
             [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
@@ -414,8 +420,6 @@ node ('python') {
             [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
           ]
         )
-      } else {
-        println "Kubernetes testing will be added soon"
       }
     }
   }
