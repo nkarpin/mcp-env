@@ -217,27 +217,8 @@ node ('python') {
   stage("Delete old image"){
     sh "for i in \$($openstack image list | grep -w cfg01-$STACK_NAME-config |  cut -f 2 -d'|'); do $openstack image delete \$i; done || true"
   }
-  stage("Delete old volume"){
-    timeout(10) {
-      volumes_count = sh returnStdout: true, script: "$openstack volume list | grep -w cfg01-$STACK_NAME-config | wc -l"
-      while (volumes_count.toInteger() > 0){
-        volume_id = sh returnStdout: true, script: "$openstack volume list | grep -w cfg01-$STACK_NAME-config | cut -f 2 -d'|' | head -1"
-        try {
-          sh "$openstack volume delete $volume_id"
-        } catch (err) {
-          println "couldn't delete $volume_id, trying again"
-        }
-        volumes_count = sh returnStdout: true, script: "$openstack volume list | grep -w cfg01-$STACK_NAME-config | wc -l"
-      }
-    }
-  }
   stage("Upload image"){
     sh "$openstack image create --disk-format raw --file cfg01.$STACK_NAME-config.iso cfg01-$STACK_NAME-config"
-  }
-  stage("Create volume"){
-    sh "$openstack volume create --size 1 --image cfg01-$STACK_NAME-config --read-only cfg01-$STACK_NAME-config"
-    volume_id = sh script: "$openstack volume show -f value -c id cfg01-$STACK_NAME-config", returnStdout: true
-    print ("Volume cfg01-$STACK_NAME-config created. It's id is $volume_id")
   }
   stage('Collect artifatcs'){
     archiveArtifacts artifacts: "cfg01.${STACK_NAME}-config.iso"
