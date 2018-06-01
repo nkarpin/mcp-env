@@ -64,6 +64,9 @@
       - string:
           name: REPORT_DIR
           default: ''
+      - string:
+          name: JOB_TIMEOUT
+          default: '120'          
     pipeline-scm:
       script-path: validate-cloud.groovy
       scm:
