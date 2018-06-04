@@ -1,0 +1,25 @@
+# Ceph OSD nodes default network configuration template
+#
+parameters:
+  linux:
+    network:
+      interface:
+        ens3:
+          enabled: true
+          name: ens3
+          type: eth
+          proto: dhcp
+        ens4:
+          enabled: true
+          type: eth
+          proto: static
+          address: ${_param:single_address}
+          netmask: ${_param:control_network_netmask}
+          ipflush_onchange: true
+          restart_on_ipflush: true
+        ens5:
+          enabled: true
+          type: eth
+          proto: static
+          address: ${_param:backend_address}
+          netmask: ${_param:backend_network_netmask}

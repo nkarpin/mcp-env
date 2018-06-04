@@ -54,6 +54,7 @@ node ('python') {
           def install_contrail = False
           def install_stacklight = False
           def install_maas = False
+          def install_ceph = False
           def nameservers = '8.8.8.8'
           if (OPENSTACK_ENVIRONMENT == 'presales') {
             nameservers = '10.10.0.15'
@@ -67,7 +68,8 @@ node ('python') {
           if (common.checkContains(STACK_INSTALL, 'cicd')) { install_cicd = True }
           if (common.checkContains(STACK_INSTALL, 'contrail')) { install_contrail = True }
           if (common.checkContains(STACK_INSTALL, 'stacklight')) { install_stacklight = True }
-          sh "$heat create -e env/$HEAT_ENV_FILE --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter cluster_nameservers=${nameservers} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} --parameter mcp_version=${MCP_VERSION} --parameter network01_dhcp=${network01_dhcp} --parameter install_openstack=${install_openstack} --parameter install_k8s=${install_k8s} --parameter install_cicd=${install_cicd} --parameter install_stacklight=${install_stacklight} --parameter install_contrail=${install_contrail} --parameter stack_full=${STACK_FULL} --parameter compute_bunch=${COMPUTE_BUNCH} --parameter install_maas=${install_maas} --parameter opencontrail_version=${OPENCONTRAIL_VERSION} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
+          if (common.checkContains(STACK_INSTALL, 'ceph')) { install_ceph = True }
+          sh "$heat create -e env/$HEAT_ENV_FILE --parameter osd_node_count=${OSD_NODES_COUNT} --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter cluster_nameservers=${nameservers} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} --parameter mcp_version=${MCP_VERSION} --parameter network01_dhcp=${network01_dhcp} --parameter install_openstack=${install_openstack} --parameter install_k8s=${install_k8s} --parameter install_cicd=${install_cicd} --parameter install_stacklight=${install_stacklight} --parameter install_ceph=${install_ceph} --parameter install_contrail=${install_contrail} --parameter stack_full=${STACK_FULL} --parameter compute_bunch=${COMPUTE_BUNCH} --parameter install_maas=${install_maas} --parameter opencontrail_version=${OPENCONTRAIL_VERSION} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
         } else {
           sh "$heat create -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
         }

@@ -105,6 +105,7 @@ node ('python') {
     openstack_enabled = false
     kubernetes_enabled = false
     opencontrail_enabled = false
+    ceph_enabled = false
     templateContext[default_context][opencontrail_context] = False
     stacklight_enabled = false
     templateContext[default_context][stacklight_context] = False
@@ -139,6 +140,10 @@ node ('python') {
           templateContext[default_context][opencontrail_context] = True
           templateContext[default_context]['openstack_network_engine'] = 'opencontrail'
           templateContext[default_context]['opencontrail_version'] = OPENCONTRAIL_VERSION
+          break
+        case 'ceph':
+          ceph_enabled = true
+          templateContext[default_context]['ceph_enabled'] = True
           break
       }
     }
@@ -211,14 +216,16 @@ node ('python') {
         }
         // Modify compute yaml
         // Workaround for PROD-20257 to set up LVM on compute nodes as a backend for Cinder
-        sh "mkdir $model_path/openstack/scale-ci-patch"
-        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
-        sh "$reclass_tools add-key --merge classes system.cinder.volume.single $model_path/openstack/compute/init.yml"
-        sh "$reclass_tools add-key --merge classes system.cinder.volume.notification.messagingv2 $model_path/openstack/compute/init.yml"
-        sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
-        sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
-        sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
-        if (!opencontrail_enabled || !MAAS_ENABLE.toBoolean() ) {
+        if ( !ceph_enabled ){
+          sh "mkdir $model_path/openstack/scale-ci-patch"
+          sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.openstack.scale-ci-patch.compute $model_path/openstack/compute/init.yml"
+          sh "$reclass_tools add-key --merge classes system.cinder.volume.single $model_path/openstack/compute/init.yml"
+          sh "$reclass_tools add-key --merge classes system.cinder.volume.notification.messagingv2 $model_path/openstack/compute/init.yml"
+          sh "sed -i '/system.cinder.volume.single/d' $model_path/openstack/control.yml"
+          sh "sed -i '/system.cinder.volume.notification.messagingv2/d' $model_path/openstack/control.yml"
+          sh "cp -f $source_patch_path/openstack-compute.yml.src $model_path/openstack/scale-ci-patch/compute.yml"
+        }
+        if (!opencontrail_enabled || !MAAS_ENABLE.toBoolean()) {
           sh "cp -f $source_patch_path/openstack-compute-net.yml.src $model_path/openstack/networking/compute.yml"
         }
         if ( MAAS_ENABLE.toBoolean() ){
@@ -277,6 +284,13 @@ node ('python') {
           sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/analytics.yml"
           sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/control.yml"
         }
+      }
+      // Modify ceph settings
+      if ( ceph_enabled ) {
+        sh "cp -f $source_patch_path/ceph-osd.yml.src $model_path/ceph/networking/osd.yml"
+        sh "cp -f $source_patch_path/ceph-virtual.yml.src $model_path/ceph/networking/virtual.yml"
+        sh "sed -i 's/pg_num: 128/pg_num: 4/g' $model_path/ceph/setup.yml"
+        sh "sed -i 's/pgp_num: 128/pgp_num: 4/g' $model_path/ceph/setup.yml"
       }
     }
   }
@@ -348,6 +362,7 @@ node ('python') {
             string( name: 'STACK_NAME', value: STACK_NAME),
             booleanParam( name: 'DELETE_STACK', value: Boolean.valueOf(DELETE_STACK)),
             string( name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT),
+            string( name: 'OSD_NODES_COUNT', value: OSD_NODES_COUNT),
             string( name: 'MCP_VERSION', value: mcpVersion),
             string( name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX),
             string( name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT),
