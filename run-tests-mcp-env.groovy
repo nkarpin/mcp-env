@@ -41,27 +41,27 @@ node ('python') {
     sh "rm -rf artifacts"
     sh "mkdir artifacts"
     try {
-      JSON = "{\"parameter\":["+
-      "{\"name\":\"RUN_RALLY_TESTS\", \"value\":true},"+
-      "{\"name\":\"RUN_TEMPEST_TESTS\", \"value\":false},"+
-      "{\"name\":\"RUN_K8S_TESTS\", \"value\":false},"+
-      "{\"name\":\"RUN_SPT_TESTS\", \"value\":false},"+
-      "{\"name\":\"ACCUMULATE_RESULTS\", \"value\":true},"+
-      "{\"name\":\"GENERATE_REPORT\", \"value\":false},"+
-      "{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"},"+
-      "{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"},"+
-      "{\"name\":\"TARGET_NODE\", \"value\":\"cfg01.${STACK_NAME}.local\"},"+
-      "{\"name\":\"FLOATING_NETWORK\", \"value\":\"public\"},"+
-      "{\"name\":\"RALLY_IMAGE\", \"value\":\"cirros-disk\"},"+
-      "{\"name\":\"RALLY_FLAVOR\", \"value\":\"m1.tiny\"},"+
-      "{\"name\":\"AVAILABILITY_ZONE\", \"value\":\"admin\"},"+
-      "{\"name\":\"TEST_IMAGE\", \"value\":\"$TEST_IMAGE\"},"+
-      "{\"name\":\"RALLY_CONFIG_REPO\", \"value\":\"$RALLY_CONFIG_REPO\"},"+
-      "{\"name\":\"RALLY_CONFIG_BRANCH\", \"value\":\"$RALLY_CONFIG_BRANCH\"},"+
-      "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"},"+
-      "{\"name\":\"RALLY_TASK_ARGS_FILE\",\"value\":\"test_config/$RALLY_TASK_ARGS_FILE\"},"+
-      "{\"name\":\"REPORT_DIR\",\"value\":\"\"},"+
-      "{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}"+
+      JSON = "{\"parameter\":[" +
+      "{\"name\":\"RUN_RALLY_TESTS\", \"value\":true}," +
+      "{\"name\":\"RUN_TEMPEST_TESTS\", \"value\":false}," +
+      "{\"name\":\"RUN_K8S_TESTS\", \"value\":false}," +
+      "{\"name\":\"RUN_SPT_TESTS\", \"value\":false}," +
+      "{\"name\":\"ACCUMULATE_RESULTS\", \"value\":true}," +
+      "{\"name\":\"GENERATE_REPORT\", \"value\":false}," +
+      "{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"}," +
+      "{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"}," +
+      "{\"name\":\"TARGET_NODE\", \"value\":\"cfg01.${STACK_NAME}.local\"}," +
+      "{\"name\":\"FLOATING_NETWORK\", \"value\":\"public\"}," +
+      "{\"name\":\"RALLY_IMAGE\", \"value\":\"cirros-disk\"}," +
+      "{\"name\":\"RALLY_FLAVOR\", \"value\":\"m1.tiny\"}," +
+      "{\"name\":\"AVAILABILITY_ZONE\", \"value\":\"admin\"}," +
+      "{\"name\":\"TEST_IMAGE\", \"value\":\"$TEST_IMAGE\"}," +
+      "{\"name\":\"RALLY_CONFIG_REPO\", \"value\":\"$RALLY_CONFIG_REPO\"}," +
+      "{\"name\":\"RALLY_CONFIG_BRANCH\", \"value\":\"$RALLY_CONFIG_BRANCH\"}," +
+      "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"}," +
+      "{\"name\":\"RALLY_TASK_ARGS_FILE\",\"value\":\"test_config/$RALLY_TASK_ARGS_FILE\"}," +
+      "{\"name\":\"REPORT_DIR\",\"value\":\"\"}," +
+      "{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}" +
       "]}"
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
@@ -73,7 +73,7 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
             [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
           ])
-      report_prefix = RALLY_SCENARIOS.replaceAll("/",".")
+      report_prefix = RALLY_SCENARIOS.replaceAll("/", ".")
       sh "rm -f artifacts.zip"
       // TODO need to change logic to get not last build but needed artifact
       sh "wget --auth-no-challenge -O artifacts.zip '${env.JENKINS_URL}/job/run-job-on-cfg01-jenkins/lastSuccessfulBuild/artifact/*zip*/archive.zip'"
@@ -82,10 +82,10 @@ node ('python') {
       sh "mv archive/archive/validation_artifacts/* artifacts/"
       sh "rm -rf archive"
       sh "$vpython ${WORKSPACE}/files/rewrite_rally_junut.py \$(ls artifacts/*.xml) /tmp/rewrited_junut.xml"
-      report_cmd = "$report --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' "+
-               " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' "+
-               "--testrail-suite 'Rally-light' --testrail-plan-name 'Rally-light' --env 'Dev cloud' "+
-               "--xunit-name-template '{classname}.{methodname}' --testrail-name-template '{title}' "+
+      report_cmd = "$report --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' " +
+               " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' " +
+               "--testrail-suite 'Rally-light' --testrail-plan-name 'Rally-light' --env 'Dev cloud' " +
+               "--xunit-name-template '{classname}.{methodname}' --testrail-name-template '{title}' " +
                "/tmp/rewrited_junut.xml"
       try {
         if (params.REPORT_RALLY_RESULTS_TO_TESTRAIL){
@@ -99,10 +99,10 @@ node ('python') {
         junit 'artifacts/*.xml'
         if (params.REPORT_RALLY_RESULTS_TO_SCALE){
           sshagent (credentials: ['mcp-scale-jenkins']) {
-            sh "D=/var/lib/kube-volumes/nginx-reports/\$(date +%Y-%m-%d_%H-%M-%S); "+
-               "ssh $ssh_opt root@infra-k8s.mcp-scale.mirantis.net mkdir \$D; scp $ssh_opt artifacts/* root@infra-k8s.mcp-scale.mirantis.net:\$D/; "+
-               "mkdir -p /tmp/$BUILD_TAG; echo '[main]' > /tmp/$BUILD_TAG/job_config.txt; "+
-               "echo BUILD_URL = $BUILD_URL >> /tmp/$BUILD_TAG/job_config.txt; "+
+            sh "D=/var/lib/kube-volumes/nginx-reports/\$(date +%Y-%m-%d_%H-%M-%S); " +
+               "ssh $ssh_opt root@infra-k8s.mcp-scale.mirantis.net mkdir \$D; scp $ssh_opt artifacts/* root@infra-k8s.mcp-scale.mirantis.net:\$D/; " +
+               "mkdir -p /tmp/$BUILD_TAG; echo '[main]' > /tmp/$BUILD_TAG/job_config.txt; " +
+               "echo BUILD_URL = $BUILD_URL >> /tmp/$BUILD_TAG/job_config.txt; " +
                "scp $ssh_opt /tmp/$BUILD_TAG/job_config.txt root@infra-k8s.mcp-scale.mirantis.net:\$D/; rm -rf /tmp/$BUILD_TAG"
           }
         }

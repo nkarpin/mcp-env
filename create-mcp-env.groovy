@@ -11,10 +11,10 @@ node ('python') {
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
           if (OPENSTACK_ENVIRONMENT == 'presales') {
-            env.OS_AUTH_URL='https://lab.mirantis.com:5000/v2.0'
-            env.OS_REGION_NAME='RegionOne'
-            env.OS_ENDPOINT_TYPE='public'
-            env.OS_IDENTITY_API_VERSION='2'
+            env.OS_AUTH_URL = 'https://lab.mirantis.com:5000/v2.0'
+            env.OS_REGION_NAME = 'RegionOne'
+            env.OS_ENDPOINT_TYPE = 'public'
+            env.OS_IDENTITY_API_VERSION = '2'
           }
   }
   openstack = "set +x; venv/bin/openstack "
@@ -39,7 +39,7 @@ node ('python') {
     // Update cluster_domain, cluster_name, openldap_domain, openstack_compute_count,
     // from job parameters
     templateContext = readYaml text: COOKIECUTTER_TEMPLATE_CONTEXT
-    tmp_template_file = WORKSPACE +"/" + JOB_NAME + ".yaml"
+    tmp_template_file = WORKSPACE + "/" + JOB_NAME + ".yaml"
     sh "rm -f " + tmp_template_file
     templateContext['default_context']['cluster_domain'] = STACK_NAME + ".local"
     templateContext['default_context']['cluster_name'] = STACK_NAME
@@ -55,7 +55,7 @@ node ('python') {
     cicd_enabled = false
     templateContext['default_context']['cicd_enabled'] = "False"
     stack_install_options.each {
-      switch( it ) {
+      switch ( it ) {
         case "openstack":
           openstack_enabled = true
           templateContext['default_context']['openstack_enabled'] = "True"
@@ -112,7 +112,7 @@ node ('python') {
     for (openssh_group in opensshGroups) {
       neededClass = 'system.openssh.server.team.' + openssh_group
       classExists = sh script: "grep $neededClass $infraInitFile", returnStatus: true
-      if(classExists == 0){
+      if (classExists == 0){
         println "Class $neededClass found in infra/init.yaml"
       } else {
         println "Class $neededClass not found in infra/init.yaml. Adding it"
@@ -131,7 +131,7 @@ node ('python') {
       println "Setting workarounds for MAAS"
       // Modify MAAS yaml if it necessary
       if ( MAAS_ENABLE.toBoolean() ) {
-        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        source_patch_path = "$WORKSPACE/cluster_settings_patch"
         sh "mkdir $model_path/infra/scale-ci-patch"
         sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
         sh "cp -f $source_patch_path/machines_template.yml.src $model_path/infra/scale-ci-patch/machines_template.yml"
@@ -144,7 +144,7 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
       }
       if (openstack_enabled) {
-        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        source_patch_path = "$WORKSPACE/cluster_settings_patch"
         println "Setting workarounds for openstack"
         // Modify gateway network settings
         if ( !opencontrail_enabled || !MAAS_ENABLE.toBoolean() ) {
@@ -197,7 +197,7 @@ node ('python') {
       }
       // Modify opencontrail network
       if ( opencontrail_enabled ) {
-        source_patch_path="$WORKSPACE/cluster_settings_patch"
+        source_patch_path = "$WORKSPACE/cluster_settings_patch"
         //Workaround for https://mirantis.jira.com/browse/PROD-19260
         if ( MAAS_ENABLE.toBoolean() ) {
           sh "cp -f $source_patch_path/openstack-compute-opencontrail-net-maas.yml.src $model_path/opencontrail/networking/compute.yml"
@@ -383,10 +383,10 @@ node ('python') {
       }
     junit_report = junit_report + "</testcase></testsuite></testsuites>"
     writeFile file: "/tmp/scale_cluster_deploy_junut.xml", text: junit_report
-    report_cmd = "$report --testrail-run-update --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' "+
-                 " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' "+
-                 "--testrail-suite '[MCP_X] integration cases' --testrail-plan-name '[MCP-Q1]System-$fDate' --env 'Dev cloud' "+
-                 "--xunit-name-template '{methodname}' --testrail-name-template '{title}' "+
+    report_cmd = "$report --testrail-run-update --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' " +
+                 " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' " +
+                 "--testrail-suite '[MCP_X] integration cases' --testrail-plan-name '[MCP-Q1]System-$fDate' --env 'Dev cloud' " +
+                 "--xunit-name-template '{methodname}' --testrail-name-template '{title}' " +
                  "/tmp/scale_cluster_deploy_junut.xml"
     try {
       if (params.REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL){

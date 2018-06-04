@@ -7,10 +7,10 @@ node ('python') {
             env.OS_PASSWORD = OS_PASSWORD
             env.OS_PROJECT_NAME = OS_PROJECT_NAME
             if (OPENSTACK_ENVIRONMENT == 'presales') {
-              env.OS_AUTH_URL='https://lab.mirantis.com:5000/v2.0'
-              env.OS_REGION_NAME='RegionOne'
-              env.OS_ENDPOINT_TYPE='public'
-              env.OS_IDENTITY_API_VERSION='2'
+              env.OS_AUTH_URL = 'https://lab.mirantis.com:5000/v2.0'
+              env.OS_REGION_NAME = 'RegionOne'
+              env.OS_ENDPOINT_TYPE = 'public'
+              env.OS_IDENTITY_API_VERSION = '2'
             }
     }
     openstack = "set +x; venv/bin/openstack "
@@ -45,12 +45,12 @@ node ('python') {
       }
     }
     stage ('Execute job on cfg01 node'){
-      JSON = "{\"parameter\": ["+
-      "{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"},"+
-      "{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"},"+
-      "{\"name\":\"STACK_INSTALL\",\"value\":\"${STACK_INSTALL}\"},"+
-      "{\"name\":\"STACK_TYPE\", \"value\":\"physical\"},"+
-      "{\"name\":\"ASK_ON_ERROR\", \"value\":\"false\"}"+
+      JSON = "{\"parameter\": [" +
+      "{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"}," +
+      "{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"}," +
+      "{\"name\":\"STACK_INSTALL\",\"value\":\"${STACK_INSTALL}\"}," +
+      "{\"name\":\"STACK_TYPE\", \"value\":\"physical\"}," +
+      "{\"name\":\"ASK_ON_ERROR\", \"value\":\"false\"}" +
       "]}"
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
