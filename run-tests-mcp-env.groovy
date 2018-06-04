@@ -60,7 +60,8 @@ node ('python') {
       "{\"name\":\"RALLY_CONFIG_BRANCH\", \"value\":\"$RALLY_CONFIG_BRANCH\"},"+
       "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"},"+
       "{\"name\":\"RALLY_TASK_ARGS_FILE\",\"value\":\"test_config/$RALLY_TASK_ARGS_FILE\"},"+
-      "{\"name\":\"REPORT_DIR\",\"value\":\"\"}"+
+      "{\"name\":\"REPORT_DIR\",\"value\":\"\"},"+
+      "{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}"+
       "]}"
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [

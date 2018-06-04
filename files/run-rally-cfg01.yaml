@@ -66,7 +66,7 @@
           default: ''
       - string:
           name: JOB_TIMEOUT
-          default: '120'          
+          default: '3'
     pipeline-scm:
       script-path: validate-cloud.groovy
       scm:
