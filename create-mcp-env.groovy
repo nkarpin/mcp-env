@@ -285,12 +285,12 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'MCP_VERSION', value: mcpVersion],
             [$class: 'StringParameterValue', name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX],
             [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT],
-            [$class: 'StringParameterValue', name: 'STACK_FULL', value: STACK_FULL],
-            [$class: 'StringParameterValue', name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH],
+            [$class: 'BooleanParameterValue', name: 'STACK_FULL', value: STACK_FULL.toBoolean()],
+            [$class: 'BooleanParameterValue', name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH.toBoolean()],
             [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
             [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
             [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC],
-            [$class: 'StringParameterValue', name: 'MAAS_ENABLE', value: MAAS_ENABLE]
+            [$class: 'BooleanParameterValue', name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()],
           ])
   }
   stage ('Provision nodes using MAAS'){
