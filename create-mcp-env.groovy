@@ -1,5 +1,3 @@
-import java.text.SimpleDateFormat
-
 node ('python') {
   currentBuild.description = STACK_NAME
   // Checkout scm specified in job configuration

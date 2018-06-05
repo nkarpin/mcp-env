@@ -35,4 +35,11 @@ ruleset {
     // TBD: Causes false positive alerts
     exclude 'SpaceBeforeOpeningBrace'
   }
+  ruleset('rulesets/generic.xml')
+  ruleset('rulesets/grails.xml')
+  ruleset('rulesets/groovyism.xml'){
+    // Not necessarily an issue
+    exclude 'GStringExpressionWithinString'
+  }
+  ruleset('rulesets/imports.xml')
 }
