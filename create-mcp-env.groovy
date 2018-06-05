@@ -1,3 +1,54 @@
+/**
+ *
+ * Pipeline which creates environment from cookiecutter template
+ * Pipeline stages:
+ *  - Handle old heat stack
+ *  - Generate model
+ *  - Rebuild config drive (Extract config drive image; Modify config drive image; Build config drive image)
+ *  - Delete old image
+ *  - Upload image
+ *  - Collect artifatcs
+ *  - Update VMs images if needed
+ *  - Update day01 image if needed
+ *  - Deploy heat stack
+ *  - Provision nodes using MAAS (Optional)
+ *  - Deploy open stack
+ *
+ * Flow parameters:
+ *   STACK_NAME                             The name of a stack which will be used with the image
+ *   STACK_FULL                             Create multi KVM node heat stack
+ *
+ *   REFSPEC                                Gerrit review for mcp-env/pipelines repo
+ *   HEAT_TEMPLATES_REFSPEC                 Gerrit review for mcp-env/heat-templates repo
+ *
+ *   OS_PROJECT_NAME                        OpenStack project to work within the cloud. Please specify your OS_PROJECT_NAME
+ *   OS_AZ                                  OpenStack availability zone to spawn heat stack. Please specify your AZ
+ *   OPENSTACK_ENVIRONMENT                  Choose target openstack environment to build environment (devcloud/presales)
+ *
+ *   DELETE_STACK                           Delete stack with the same name
+ *   STACK_INSTALL                          Comma separated list of components to install
+ *
+ *   MAAS_ENABLE                            Hosts provisioning using MAAS
+ *
+ *   COMPUTE_BUNCH                          Create Heat stack with CMP bunch
+ *   FLAVOR_PREFIX                          Flavor to use for environment (dev/compact)
+ *   COMPUTE_NODES_COUNT                    The number of compute nodes to add to env
+ *
+ * Test parameters:
+ *   RUN_TESTS                              Would you like to run tests against deployed environment? By default true.
+ *   REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL  Would you like to send test deployment report to TestRail?
+ *   REPORT_RALLY_RESULTS_TO_TESTRAIL       Would you like to publish rally results to TestRail?
+ *   REPORT_RALLY_RESULTS_TO_SCALE          Would you like to publish rally results to http://infra-k8s.mcp-scale.mirantis.net:8888/?
+ *
+ **/
+
+def common = new com.mirantis.mk.Common()
+
+def runTests = true
+if (common.validInputParam('RUN_TESTS')){
+  runTests = RUN_TESTS.toBoolean()
+}
+
 node ('python') {
   currentBuild.description = STACK_NAME
   // Checkout scm specified in job configuration
@@ -388,25 +439,27 @@ node ('python') {
   }
   if (OPENSTACK_ENVIRONMENT == 'devcloud') {
     stage('Run rally tests'){
-      if ( kubernetes_enabled ) {
-        println "Kubernetes testing will be added soon"
-      }
-      else {
-        build(job: 'run-tests-mcp-env',
-          parameters: [
-            [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-            [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-            [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-            [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
-            [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
-            [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
-            [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
-            [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
-            [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
-            [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
-            [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
-          ]
-        )
+      if (runTests) {
+        if ( kubernetes_enabled ) {
+          println "Kubernetes testing will be added soon"
+        }
+        else {
+          build(job: 'run-tests-mcp-env',
+            parameters: [
+              [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
+              [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
+              [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+              [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
+              [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
+              [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
+              [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
+              [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
+              [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: Boolean.valueOf(true)],
+              [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
+              [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
+            ]
+          )
+        }
       }
     }
   }
