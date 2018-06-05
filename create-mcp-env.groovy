@@ -22,17 +22,6 @@ node ('python') {
   stage ('Build venv'){
       sh "virtualenv venv; venv/bin/pip install \"cmd2<0.9.0\" python-openstackclient python-heatclient git+https://github.com/dis-xcom/reclass_tools git+https://github.com/dis-xcom/testrail_reporter"
   }
-  stage ("Handle old heat stack") {
-      if (params.DELETE_STACK){
-          build(job: 'delete-heat-stack-for-mcp-env',
-            parameters: [
-              [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-              [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-              [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-              [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT]
-            ])
-      }
-  }
   stage ('Generate model'){
     // Update cluster_domain, cluster_name, openldap_domain, openstack_compute_count,
     // from job parameters
