@@ -42,4 +42,20 @@ ruleset {
     exclude 'GStringExpressionWithinString'
   }
   ruleset('rulesets/imports.xml')
+  ruleset('rulesets/jdbc.xml')
+  ruleset('rulesets/junit.xml')
+  ruleset('rulesets/logging.xml'){
+    // Can't be used in jenklins pipelines
+    exclude 'Println'
+  }
+  ruleset('rulesets/naming.xml'){
+    // Don't need due to code readablilty
+    exclude 'FactoryMethodName'
+    // Don't need due to code readablilty
+    exclude 'VariableName'
+  }
+  ruleset('rulesets/security.xml'){
+    // Don't need to satisfy the Java Beans specification
+    exclude 'JavaIoPackageAccess'
+  }
 }
