@@ -13,10 +13,10 @@ node ('python') {
               env.OS_IDENTITY_API_VERSION = '2'
             }
     }
-    openstack = "set +x; venv/bin/openstack "
+    openstack = 'set +x; venv/bin/openstack '
     heat = "$openstack stack "
     stage ('Checkout'){
-      repo_url = "ssh://mcp-jenkins@gerrit.mcp.mirantis.net:29418/mcp-env/heat-templates"
+      repo_url = 'ssh://mcp-jenkins@gerrit.mcp.mirantis.net:29418/mcp-env/heat-templates'
       checkout([
         $class: 'GitSCM',
         branches: [
@@ -28,7 +28,7 @@ node ('python') {
       ])
     }
     stage ('Build venv'){
-        sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient"
+        sh 'virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient'
     }
     stage ('Deploy heat stack'){
         if (params.DELETE_STACK){
@@ -39,26 +39,26 @@ node ('python') {
                 [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
               ])
         }
-        if (params.HEAT_ENV_FILE != ""){
+        if (params.HEAT_ENV_FILE != ''){
           def common = new com.mirantis.mk.Common()
-          def network01_dhcp = "true"
-          def install_openstack = "false"
-          def install_k8s = "false"
-          def install_cicd = "false"
-          def install_contrail = "false"
-          def install_stacklight = "false"
-          def install_maas = "false"
+          def network01_dhcp = 'true'
+          def install_openstack = 'false'
+          def install_k8s = 'false'
+          def install_cicd = 'false'
+          def install_contrail = 'false'
+          def install_stacklight = 'false'
+          def install_maas = 'false'
           def nameservers = '8.8.8.8'
           if (OPENSTACK_ENVIRONMENT == 'devcloud') {
             nameservers = '172.18.176.6'
           }
-          if ( STACK_FULL.toBoolean() ) { network01_dhcp = "false" }
-          if ( MAAS_ENABLE.toBoolean() ) { install_maas = "true" }
-          if (common.checkContains('STACK_INSTALL', 'openstack')) { install_openstack = "true" }
-          if (common.checkContains('STACK_INSTALL', 'k8s')) { install_k8s = "true" }
-          if (common.checkContains('STACK_INSTALL', 'cicd')) { install_cicd = "true" }
-          if (common.checkContains('STACK_INSTALL', 'contrail')) { install_contrail = "true" }
-          if (common.checkContains('STACK_INSTALL', 'stacklight')) { install_stacklight = "true" }
+          if ( STACK_FULL.toBoolean() ) { network01_dhcp = 'false' }
+          if ( MAAS_ENABLE.toBoolean() ) { install_maas = 'true' }
+          if (common.checkContains('STACK_INSTALL', 'openstack')) { install_openstack = 'true' }
+          if (common.checkContains('STACK_INSTALL', 'k8s')) { install_k8s = 'true' }
+          if (common.checkContains('STACK_INSTALL', 'cicd')) { install_cicd = 'true' }
+          if (common.checkContains('STACK_INSTALL', 'contrail')) { install_contrail = 'true' }
+          if (common.checkContains('STACK_INSTALL', 'stacklight')) { install_stacklight = 'true' }
           out = sh script: "$openstack volume list | grep -w cfg01-${STACK_NAME}-config | awk '{print \$2}'", returnStdout: true
           disk_drive_id = out.trim()
           sh "sed -i 's/volume01-id/${disk_drive_id}/' template/$HEAT_TEMPLATE_FILE"
@@ -69,11 +69,11 @@ node ('python') {
     }
     stage ('Wait heat stack'){
         timeout(time: 100, unit: 'MINUTES'){
-        out = ""
-            while (out.trim() != "CREATE_COMPLETE"){
+        out = ''
+            while (out.trim() != 'CREATE_COMPLETE'){
                 out = sh script: "$heat list | awk -v stack=$STACK_NAME '{if (\$4==stack) print \$6}'", returnStdout: true
                 print ("The stack status is $out")
-                if (out.trim() != "CREATE_IN_PROGRESS" && out.trim() != "CREATE_COMPLETE") {
+                if (out.trim() != 'CREATE_IN_PROGRESS' && out.trim() != 'CREATE_COMPLETE') {
                     error("Something wrong with stack! The status is $out")
                 }
             }

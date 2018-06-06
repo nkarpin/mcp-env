@@ -58,4 +58,24 @@ ruleset {
     // Don't need to satisfy the Java Beans specification
     exclude 'JavaIoPackageAccess'
   }
+  ruleset('rulesets/serialization.xml')
+  // TBD: Huge functions should be rewritten
+  ruleset('rulesets/size.xml'){
+    exclude 'AbcMetric'
+    exclude 'MethodSize'
+    exclude 'NestedBlockDepth'
+    // Not necessarily an issue
+    exclude 'ParameterCount'
+    //We don't need it for mcp-create-env
+    exclude 'CyclomaticComplexity'
+  }
+  ruleset('rulesets/unnecessary.xml'){
+    // Don't need due to code readablilty
+    exclude 'UnnecessaryDefInVariableDeclaration'
+    // TBD: Huge amount of warnings
+    exclude 'UnnecessaryGetter'
+    // Not necessarily an issue
+    exclude 'UnnecessaryReturnKeyword'
+  }
+  ruleset('rulesets/unused.xml')
 }

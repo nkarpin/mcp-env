@@ -1,7 +1,7 @@
-ssh_opt = " -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 def remote_ssh_cmd(server, command){
-  ssh_user = "mos-scale-jenkins"
-  writeFile file: "/tmp/cmd-tmp.sh", text: command
+  ssh_user = 'mos-scale-jenkins'
+  writeFile file: '/tmp/cmd-tmp.sh', text: command
   sh "scp $ssh_opt /tmp/cmd-tmp.sh $ssh_user@$server:/tmp/cmd-tmp.sh"
   sh "ssh $ssh_opt $ssh_user@$server bash -xe /tmp/cmd-tmp.sh"
 }
@@ -16,13 +16,13 @@ node ('python') {
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
   }
-  openstack = "set +x; venv/bin/openstack "
-  vpython = "venv/bin/python"
-  report = "venv/bin/report"
-  jenkins_user = "admin"
-  jenkins_pass = "r00tme"
+  openstack = 'set +x; venv/bin/openstack '
+  vpython = 'venv/bin/python'
+  report = 'venv/bin/report'
+  jenkins_user = 'admin'
+  jenkins_pass = 'r00tme'
   stage ('Build venv'){
-      sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient junitparser git+https://github.com/dis-xcom/testrail_reporter"
+      sh 'virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient junitparser git+https://github.com/dis-xcom/testrail_reporter'
   }
   stage ('Get cfg01 floating'){
     out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
@@ -37,32 +37,32 @@ node ('python') {
         ])
   }
   stage ('Run rally'){
-    sh "rm -rf archive"
-    sh "rm -rf artifacts"
-    sh "mkdir artifacts"
+    sh 'rm -rf archive'
+    sh 'rm -rf artifacts'
+    sh 'mkdir artifacts'
     try {
-      JSON = "{\"parameter\":[" +
-      "{\"name\":\"RUN_RALLY_TESTS\", \"value\":true}," +
-      "{\"name\":\"RUN_TEMPEST_TESTS\", \"value\":false}," +
-      "{\"name\":\"RUN_K8S_TESTS\", \"value\":false}," +
-      "{\"name\":\"RUN_SPT_TESTS\", \"value\":false}," +
-      "{\"name\":\"ACCUMULATE_RESULTS\", \"value\":true}," +
-      "{\"name\":\"GENERATE_REPORT\", \"value\":false}," +
-      "{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"}," +
-      "{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"}," +
+      JSON = '{\"parameter\":[' +
+      '{\"name\":\"RUN_RALLY_TESTS\", \"value\":true},' +
+      '{\"name\":\"RUN_TEMPEST_TESTS\", \"value\":false},' +
+      '{\"name\":\"RUN_K8S_TESTS\", \"value\":false},' +
+      '{\"name\":\"RUN_SPT_TESTS\", \"value\":false},' +
+      '{\"name\":\"ACCUMULATE_RESULTS\", \"value\":true},' +
+      '{\"name\":\"GENERATE_REPORT\", \"value\":false},' +
+      '{\"name\":\"SALT_MASTER_CREDENTIALS\", \"value\":\"salt\"},' +
+      '{\"name\":\"SALT_MASTER_URL\", \"value\":\"http://cfg01:6969\"},' +
       "{\"name\":\"TARGET_NODE\", \"value\":\"cfg01.${STACK_NAME}.local\"}," +
-      "{\"name\":\"FLOATING_NETWORK\", \"value\":\"public\"}," +
-      "{\"name\":\"RALLY_IMAGE\", \"value\":\"cirros-disk\"}," +
-      "{\"name\":\"RALLY_FLAVOR\", \"value\":\"m1.tiny\"}," +
-      "{\"name\":\"AVAILABILITY_ZONE\", \"value\":\"admin\"}," +
+      '{\"name\":\"FLOATING_NETWORK\", \"value\":\"public\"},' +
+      '{\"name\":\"RALLY_IMAGE\", \"value\":\"cirros-disk\"},' +
+      '{\"name\":\"RALLY_FLAVOR\", \"value\":\"m1.tiny\"},' +
+      '{\"name\":\"AVAILABILITY_ZONE\", \"value\":\"admin\"},' +
       "{\"name\":\"TEST_IMAGE\", \"value\":\"$TEST_IMAGE\"}," +
       "{\"name\":\"RALLY_CONFIG_REPO\", \"value\":\"$RALLY_CONFIG_REPO\"}," +
       "{\"name\":\"RALLY_CONFIG_BRANCH\", \"value\":\"$RALLY_CONFIG_BRANCH\"}," +
       "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"}," +
       "{\"name\":\"RALLY_TASK_ARGS_FILE\",\"value\":\"test_config/$RALLY_TASK_ARGS_FILE\"}," +
-      "{\"name\":\"REPORT_DIR\",\"value\":\"\"}," +
-      "{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}" +
-      "]}"
+      '{\"name\":\"REPORT_DIR\",\"value\":\"\"},' +
+      '{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}' +
+      ']}'
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
             [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
@@ -73,20 +73,20 @@ node ('python') {
             [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
             [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
           ])
-      report_prefix = RALLY_SCENARIOS.replaceAll("/", ".")
-      sh "rm -f artifacts.zip"
+      report_prefix = RALLY_SCENARIOS.replaceAll('/', '.')
+      sh 'rm -f artifacts.zip'
       // TODO need to change logic to get not last build but needed artifact
       sh "wget --auth-no-challenge -O artifacts.zip '${env.JENKINS_URL}/job/run-job-on-cfg01-jenkins/lastSuccessfulBuild/artifact/*zip*/archive.zip'"
-      sh "unzip artifacts.zip"
+      sh 'unzip artifacts.zip'
       sh "cd archive/archive/validation_artifacts; for i in \$(ls ); do mv \$i ${report_prefix}.\$i ; done"
-      sh "mv archive/archive/validation_artifacts/* artifacts/"
-      sh "rm -rf archive"
+      sh 'mv archive/archive/validation_artifacts/* artifacts/'
+      sh 'rm -rf archive'
       sh "$vpython ${WORKSPACE}/files/rewrite_rally_junut.py \$(ls artifacts/*.xml) /tmp/rewrited_junut.xml"
       report_cmd = "$report --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' " +
                " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' " +
                "--testrail-suite 'Rally-light' --testrail-plan-name 'Rally-light' --env 'Dev cloud' " +
                "--xunit-name-template '{classname}.{methodname}' --testrail-name-template '{title}' " +
-               "/tmp/rewrited_junut.xml"
+               '/tmp/rewrited_junut.xml'
       try {
         if (params.REPORT_RALLY_RESULTS_TO_TESTRAIL){
            sh "$report_cmd"

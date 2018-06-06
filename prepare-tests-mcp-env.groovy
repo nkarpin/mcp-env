@@ -1,9 +1,9 @@
-ssh_opt = " -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-jenkins_user = "admin"
-jenkins_pass = "r00tme"
-ssh_user = "mcp-scale-jenkins"
+ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+jenkins_user = 'admin'
+jenkins_pass = 'r00tme'
+ssh_user = 'mcp-scale-jenkins'
 def remote_ssh_cmd(server, command){
-  writeFile file: "/tmp/cmd-tmp.sh", text: command
+  writeFile file: '/tmp/cmd-tmp.sh', text: command
   sh "scp $ssh_opt /tmp/cmd-tmp.sh $ssh_user@$server:/tmp/cmd-tmp.sh"
   sh "ssh $ssh_opt $ssh_user@$server bash -xe /tmp/cmd-tmp.sh"
 }
@@ -18,11 +18,11 @@ node ('python') {
           env.OS_PASSWORD = OS_PASSWORD
           env.OS_PROJECT_NAME = OS_PROJECT_NAME
   }
-  openstack = "set +x; venv/bin/openstack "
-  vpython = "venv/bin/python"
-  report = "venv/bin/report"
-  jenkins_user = "admin"
-  jenkins_pass = "r00tme"
+  openstack = 'set +x; venv/bin/openstack '
+  vpython = 'venv/bin/python'
+  report = 'venv/bin/report'
+  jenkins_user = 'admin'
+  jenkins_pass = 'r00tme'
   stage ('Build venv'){
       sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient 'jenkins-job-builder>=2.0.0.0b2' junitparser git+https://github.com/dis-xcom/testrail_reporter"
   }
@@ -36,12 +36,12 @@ node ('python') {
     rally_node = "cfg01.${STACK_NAME}.local"
     sshagent (credentials: ['mcp-scale-jenkins']) {
       sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install pkgs=[\\\'apt-transport-https\\\',\\\'ca-certificates\\\',\\\'curl\\\',\\\'build-essential\\\',\\\'python-dev\\\',\\\'gcc\\\']"
-      writeFile file: "/tmp/cmd.sh", text: 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nadd-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+      writeFile file: '/tmp/cmd.sh', text: 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nadd-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
       sh "scp $ssh_opt /tmp/cmd.sh $ssh_user@$cfg01_ip:/tmp/cmd.sh"
       sh "$ssh_cmd_cfg01 sudo salt-cp $rally_node /tmp/cmd.sh /tmp/tmp-cmd.sh"
       sh "$ssh_cmd_cfg01 sudo salt $rally_node cmd.run \\\'bash /tmp/tmp-cmd.sh\\\'"
       sh "$ssh_cmd_cfg01 sudo mkdir -p /etc/docker/"
-      writeFile file: "/tmp/docker-host.yml", text: '{"bip": "10.99.0.1/16", "fixed-cidr": "10.99.0.1/17"}'
+      writeFile file: '/tmp/docker-host.yml', text: '{"bip": "10.99.0.1/16", "fixed-cidr": "10.99.0.1/17"}'
       sh "scp $ssh_opt /tmp/docker-host.yml $ssh_user@$cfg01_ip:/tmp/docker-host.yml"
       sh "$ssh_cmd_cfg01 sudo mv /tmp/docker-host.yml /etc/docker/daemon.json"
       sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install docker-ce refresh=true"
