@@ -171,15 +171,18 @@ node ('python') {
       if ( MAAS_ENABLE.toBoolean() ) {
         source_patch_path = "$WORKSPACE/cluster_settings_patch"
         sh "mkdir $model_path/infra/scale-ci-patch"
-        sh "cp -f $source_patch_path/maas_dhcp_range.yml.src $model_path/infra/scale-ci-patch/maas_dhcp_range.yml"
+        sh "cp -f $source_patch_path/maas_proxy_enable.yml.src $model_path/infra/scale-ci-patch/maas_proxy_enable.yml"
         sh "cp -f $source_patch_path/machines_template.yml.src $model_path/infra/scale-ci-patch/machines_template.yml"
-        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_dhcp_range $model_path/infra/maas.yml"
+        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_proxy_enable $model_path/infra/maas.yml"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.machines_template $model_path/infra/maas.yml"
         //NOTE: differents from a customer setup.
         //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
         //in another way will lost external connection for this nodes.
         sh "cp -f $source_patch_path/dhcp_snippets.yml.src $model_path/infra/scale-ci-patch/dhcp_snippets.yml"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.dhcp_snippets $model_path/infra/maas.yml"
+        //NOTE: Dirrences from a cusomer envirionment
+        //We are not able to provide IMPI node information as csv file before creating stack
+        sh "sed -i '/machines:/d' $model_path/infra/maas.yml"
       }
       if (openstack_enabled) {
         source_patch_path = "$WORKSPACE/cluster_settings_patch"
@@ -349,8 +352,8 @@ node ('python') {
         sh "$ssh_cmd_cfg01 sudo cp machines_template.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/machines_template.yml"
 
         //Fix for the https://mirantis.jira.com/browse/PROD-19174
-        sh "$ssh_cmd_cfg01 wget https://raw.githubusercontent.com/salt-formulas/salt-formula-maas/master/_modules/maas.py"
-        sh "$ssh_cmd_cfg01 sudo cp maas.py /srv/salt/env/prd/_modules/maas.py"
+        //sh "$ssh_cmd_cfg01 wget https://raw.githubusercontent.com/salt-formulas/salt-formula-maas/master/_modules/maas.py"
+        //sh "$ssh_cmd_cfg01 sudo cp maas.py /srv/salt/env/prd/_modules/maas.py"
 
         //Apply several fixes for MAAS and provision compute hosts
         sh "scp $ssh_opt $WORKSPACE/files/fixes-for-maas.sh $ssh_user@$cfg01_ip:fixes-for-maas.sh"

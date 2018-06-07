@@ -1,0 +1,5 @@
+parameters:
+  maas:
+    region:
+      maas_config:
+        enable_http_proxy: true
