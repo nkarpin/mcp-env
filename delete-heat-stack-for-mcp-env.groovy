@@ -1,3 +1,17 @@
+/**
+*
+* Delete stack that were created by create-mcp-env job
+*
+* Expected parameters:
+*   STACK_NAME                 The name of stack to delete.
+*   OS_PROJECT_NAME            OpenStack project to connect to
+*   OPENSTACK_ENVIRONMENT      Choose Openstack environment.
+*
+*
+**/
+
+common = new com.mirantis.mk.Common()
+
 node ('python') {
     currentBuild.description = STACK_NAME
      // Configure OpenStack credentials and command
@@ -19,25 +33,20 @@ node ('python') {
          sh 'virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient'
      }
      stage ('Delete heat stack'){
-       out = sh script: "$heat list | awk -v stack=$STACK_NAME '{if (\$4==stack) print \$6}'", returnStdout: true
-       if (out.trim() != '' && out.trim() != 'DELETE_IN_PROGRESS'  &&  out.trim() != 'DELETE_COMPLETE' ){
-           sh "$heat delete $STACK_NAME"
-           timeout(time: 20, unit: 'MINUTES'){
-               out = params.STACK_NAME
-               while (out.trim() != ''){
-                   out = sh script: "$heat list | awk -v stack=$STACK_NAME '{if (\$4==stack) print \$4}'", returnStdout: true
-                   out2 = sh script: "$heat list | awk -v stack=$STACK_NAME '{if (\$4==stack) print \$6}'", returnStdout: true
-                   print ("The stack status is $out2")
-                   if (out2.trim() != 'DELETE_IN_PROGRESS' && out2.trim() != '' && out2.trim() != 'DELETE_COMPLETE' && out.trim() !=  'CREATE_FAILED') {
-                       error("Something wrong with stack! The status is $out2")
-                   }
-               }
-           }
+       timeout(time: 20, unit: 'MINUTES'){
+         out = sh script: "$heat list | awk -v stack=$STACK_NAME '{if (\$4==stack) print \$6}'", returnStdout: true
+         if (out.trim() != ''){
+             common.infoMsg("Deleting heat stack ${STACK_NAME}")
+             out = sh script: "$heat delete --wait -y $STACK_NAME", returnStdout: true
+         } else {
+           common.warningMsg("Stack ${STACK_NAME} wasn't found please check job parameters.")
+         }
+         common.infoMsg(out)
        }
-       print ("Check keypair $STACK_NAME")
+       common.infoMsg("Check keypair $STACK_NAME")
        out = sh script: "$openstack keypair list | grep ' $STACK_NAME ' || true", returnStdout: true
        if (out.trim() != ''){
-          print ("Delete keypair $STACK_NAME")
+          common.infoMsg("Delete keypair $STACK_NAME")
           sh "$openstack keypair delete $STACK_NAME"
        }
      }
