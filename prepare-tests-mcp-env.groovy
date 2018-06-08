@@ -49,21 +49,23 @@ node ('python') {
     sh "cd files; PATH=${PATH}:${WORKSPACE}/venv/bin ./deploy-run-rally-cfg01-job.sh run-rally-cfg01 $cfg01_ip"
   }
   stage ('Prepare OpenStack cluster for rally tests'){
-    sshagent (credentials: [ssh_user]) {
-      sh "$ssh_cmd_cfg01 virtualenv /home/$ssh_user/venv"
-      remote_ssh_cmd(cfg01_ip, "sudo salt --out=newline_values_only --out-file=./openrc 'ctl01*' cmd.run 'cat /root/keystonercv3'")
-      sh "$ssh_cmd_cfg01 /home/$ssh_user/venv/bin/pip install python-openstackclient"
-      openstack_cfg01 = "set +x; . /home/$ssh_user/openrc; /home/$ssh_user/venv/bin/openstack --insecure "
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.small || true")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.nano || true")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.tiny || true")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 512 m1.small")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 64 m1.nano")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 128 m1.tiny")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image  delete TestVM || true")
-      remote_ssh_cmd(cfg01_ip, "wget --progress=dot:mega -c http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img -O /home/$ssh_user/cirros-0.3.5-x86_64-disk.img")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image create --force --public --file /home/$ssh_user/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 TestVM")
-      remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 volume type create standard-iops || true")
+    if (! K8S_RALLY) {
+      sshagent (credentials: [ssh_user]) {
+        sh "$ssh_cmd_cfg01 virtualenv /home/$ssh_user/venv"
+        remote_ssh_cmd(cfg01_ip, "sudo salt --out=newline_values_only --out-file=./openrc 'ctl01*' cmd.run 'cat /root/keystonercv3'")
+        sh "$ssh_cmd_cfg01 /home/$ssh_user/venv/bin/pip install python-openstackclient"
+        openstack_cfg01 = "set +x; . /home/$ssh_user/openrc; /home/$ssh_user/venv/bin/openstack --insecure "
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.small || true")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.nano || true")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.tiny || true")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 512 m1.small")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 64 m1.nano")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 128 m1.tiny")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image  delete TestVM || true")
+        remote_ssh_cmd(cfg01_ip, "wget --progress=dot:mega -c http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img -O /home/$ssh_user/cirros-0.3.5-x86_64-disk.img")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image create --force --public --file /home/$ssh_user/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 TestVM")
+        remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 volume type create standard-iops || true")
+      }
     }
   }
 }

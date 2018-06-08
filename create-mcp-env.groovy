@@ -460,26 +460,36 @@ node ('python') {
   if (OPENSTACK_ENVIRONMENT == 'devcloud') {
     stage('Run rally tests'){
       if (runTests) {
-        if ( kubernetes_enabled ) {
-          println 'Kubernetes testing will be added soon'
+        // TODO: use upstream image everywhere
+        def rally_scenario
+        def rally_image
+        def default_branch = 'master'
+        if (openstack_enabled){
+          rally_scenario = 'rally-scenarios-light'
+          rally_image = 'sergeygals/rally'
         }
-        else {
-          build(job: 'run-tests-mcp-env',
-            parameters: [
-              string( name: 'REFSPEC', value: REFSPEC),
-              string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
-              string( name: 'STACK_NAME', value: STACK_NAME),
-              string( name: 'TEST_IMAGE', value: 'sergeygals/rally'),
-              string( name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'),
-              string( name: 'RALLY_CONFIG_BRANCH', value: 'master'),
-              string( name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'),
-              string( name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'),
-              booleanParam( name: 'RALLY_SCENARIOS_RECURSIVE', value: true),
-              booleanParam( name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)),
-              booleanParam( name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)),
-            ]
-          )
+        if (kubernetes_enabled){
+          rally_scenario = 'rally-k8s'
+          rally_image = 'xrally/xrally-openstack'
         }
+        build(job: 'run-tests-mcp-env',
+          parameters: [
+            string( name: 'REFSPEC', value: REFSPEC),
+            string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+            string( name: 'STACK_NAME', value: STACK_NAME),
+            string( name: 'TEST_IMAGE', value: rally_image),
+            booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(kubernetes_enabled)),
+            string( name: 'RALLY_PLUGINS_REPO', value: 'https://github.com/Mirantis/rally-plugins'),
+            string( name: 'RALLY_PLUGINS_BRANCH', value: default_branch),
+            string( name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'),
+            string( name: 'RALLY_CONFIG_BRANCH', value: default_branch),
+            string( name: 'RALLY_SCENARIOS', value: rally_scenario),
+            string( name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'),
+            booleanParam( name: 'RALLY_SCENARIOS_RECURSIVE', value: true),
+            booleanParam( name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)),
+            booleanParam( name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)),
+          ]
+        )
       }
     }
   }

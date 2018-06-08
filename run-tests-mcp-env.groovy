@@ -34,7 +34,9 @@ node ('python') {
         string( name: 'REFSPEC', value: REFSPEC),
         string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
         string( name: 'STACK_NAME', value: STACK_NAME),
-        ])
+        booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(K8S_RALLY)),
+      ]
+    )
   }
   stage ('Run rally'){
     sh 'rm -rf archive'
@@ -43,6 +45,7 @@ node ('python') {
     try {
       JSON = '{\"parameter\":[' +
       '{\"name\":\"RUN_RALLY_TESTS\", \"value\":true},' +
+      "{\"name\":\"K8S_RALLY\", \"value\":${K8S_RALLY}}," +
       '{\"name\":\"RUN_TEMPEST_TESTS\", \"value\":false},' +
       '{\"name\":\"RUN_K8S_TESTS\", \"value\":false},' +
       '{\"name\":\"RUN_SPT_TESTS\", \"value\":false},' +
@@ -56,6 +59,8 @@ node ('python') {
       '{\"name\":\"RALLY_FLAVOR\", \"value\":\"m1.tiny\"},' +
       '{\"name\":\"AVAILABILITY_ZONE\", \"value\":\"admin\"},' +
       "{\"name\":\"TEST_IMAGE\", \"value\":\"$TEST_IMAGE\"}," +
+      "{\"name\":\"RALLY_PLUGINS_REPO\", \"value\":\"$RALLY_PLUGINS_REPO\"}," +
+      "{\"name\":\"RALLY_PLUGINS_BRANCH\", \"value\":\"$RALLY_PLUGINS_BRANCH\"}," +
       "{\"name\":\"RALLY_CONFIG_REPO\", \"value\":\"$RALLY_CONFIG_REPO\"}," +
       "{\"name\":\"RALLY_CONFIG_BRANCH\", \"value\":\"$RALLY_CONFIG_BRANCH\"}," +
       "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"}," +
