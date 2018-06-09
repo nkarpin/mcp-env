@@ -48,6 +48,23 @@ def runTests = true
 if (common.validInputParam('RUN_TESTS')){
   runTests = RUN_TESTS.toBoolean()
 }
+String True = 'True'
+String False = 'False'
+String default_context = 'default_context'
+String domain_suf = '.local'
+String openstack_context = 'openstack_enabled'
+String kubernetes_context = 'kubernetes_enabled'
+String stacklight_context = 'stacklight_enabled'
+String cicd_context = 'cicd_enabled'
+String opencontrail_context = 'opencontrail_enabled'
+String platform = 'platform'
+String public_host = 'public_host'
+String file_suf = '.yaml'
+String default_version = 'testing'
+String xml_path = '/tmp/scale_cluster_deploy_junut.xml'
+String split_char = ','
+
+
 
 node ('python') {
   currentBuild.description = STACK_NAME
@@ -77,56 +94,56 @@ node ('python') {
     // Update cluster_domain, cluster_name, openldap_domain, openstack_compute_count,
     // from job parameters
     templateContext = readYaml text: COOKIECUTTER_TEMPLATE_CONTEXT
-    tmp_template_file = WORKSPACE + '/' + JOB_NAME + '.yaml'
+    tmp_template_file = WORKSPACE + '/' + JOB_NAME + file_suf
     sh 'rm -f ' + tmp_template_file
-    templateContext['default_context']['cluster_domain'] = STACK_NAME + '.local'
-    templateContext['default_context']['cluster_name'] = STACK_NAME
-    templateContext['default_context']['openldap_domain'] = STACK_NAME + '.local'
-    templateContext['default_context']['openstack_compute_count'] = COMPUTE_NODES_COUNT
-    def stack_install_options = STACK_INSTALL.split(',')
+    templateContext[default_context]['cluster_domain'] = STACK_NAME + domain_suf
+    templateContext[default_context]['cluster_name'] = STACK_NAME
+    templateContext[default_context]['openldap_domain'] = STACK_NAME + domain_suf
+    templateContext[default_context]['openstack_compute_count'] = COMPUTE_NODES_COUNT
+    def stack_install_options = STACK_INSTALL.split(split_char)
     openstack_enabled = false
     kubernetes_enabled = false
     opencontrail_enabled = false
-    templateContext['default_context']['opencontrail_enabled'] = 'False'
+    templateContext[default_context][opencontrail_context] = False
     stacklight_enabled = false
-    templateContext['default_context']['stacklight_enabled'] = 'False'
+    templateContext[default_context][stacklight_context] = False
     cicd_enabled = false
-    templateContext['default_context']['cicd_enabled'] = 'False'
+    templateContext[default_context][cicd_context] = False
     stack_install_options.each {
       switch ( it ) {
         case 'openstack':
           openstack_enabled = true
-          templateContext['default_context']['openstack_enabled'] = 'True'
-          templateContext['default_context']['kubernetes_enabled'] = 'False'
-          templateContext['default_context']['platform'] = 'openstack_enabled'
-          templateContext['default_context']['public_host'] = "\${_param:openstack_proxy_address}"
+          templateContext[default_context][openstack_context] = True
+          templateContext[default_context][kubernetes_context] = False
+          templateContext[default_context][platform] = openstack_context
+          templateContext[default_context][public_host] = "\${_param:openstack_proxy_address}"
           break
         case 'k8s':
           kubernetes_enabled = true
-          templateContext['default_context']['kubernetes_enabled'] = 'True'
-          templateContext['default_context']['openstack_enabled'] = 'False'
-          templateContext['default_context']['platform'] = 'kubernetes_enabled'
-          templateContext['default_context']['public_host'] = "\${_param:infra_config_address}"
+          templateContext[default_context][kubernetes_context] = True
+          templateContext[default_context][openstack_context] = False
+          templateContext[default_context][platform] = kubernetes_context
+          templateContext[default_context][public_host] = "\${_param:infra_config_address}"
           break
         case 'stacklight':
           stacklight_enabled = true
-          templateContext['default_context']['stacklight_enabled'] = 'True'
+          templateContext[default_context][stacklight_context] = True
           break
         case 'cicd':
           cicd_enabled = true
-          templateContext['default_context']['cicd_enabled'] = 'True'
+          templateContext[default_context][cicd_context] = True
           break
         case 'opencontrail':
           opencontrail_enabled = true
-          templateContext['default_context']['opencontrail_enabled'] = 'True'
-          templateContext['default_context']['openstack_network_engine'] = 'opencontrail'
+          templateContext[default_context]['opencontrail_context'] = True
+          templateContext[default_context]['openstack_network_engine'] = 'opencontrail'
           break
       }
     }
-    if ( MAAS_ENABLE.toBoolean() && kubernetes_enabled ) { templateContext['default_context']['kubernetes_keepalived_vip_interface'] = 'one1' }
+    if ( MAAS_ENABLE.toBoolean() && kubernetes_enabled ) { templateContext[default_context]['kubernetes_keepalived_vip_interface'] = 'one1' }
     writeYaml file: tmp_template_file, data: templateContext
     COOKIECUTTER_TEMPLATE_CONTEXT = readFile tmp_template_file
-    archiveArtifacts artifacts: JOB_NAME + '.yaml'
+    archiveArtifacts artifacts: JOB_NAME + file_suf
     sh 'rm -f ' + tmp_template_file
     print('Using context:\n' + COOKIECUTTER_TEMPLATE_CONTEXT)
     build(job: 'generate-salt-model-separated-products',
@@ -145,7 +162,7 @@ node ('python') {
     sh "rm cfg01.${STACK_NAME}-config.iso"
     sh "rm /tmp/cfg01.${STACK_NAME}-config/meta-data"
     // Calculation openssh_groups variable for old releases ( older then https://gerrit.mcp.mirantis.net/#/c/19109/)
-    opensshGroups = templateContext['default_context']['openssh_groups'].tokenize(',')
+    opensshGroups = templateContext[default_context]['openssh_groups'].tokenize(split_char)
     infraInitFile = model_path + '/infra/init.yml'
     for (openssh_group in opensshGroups) {
       neededClass = 'system.openssh.server.team.' + openssh_group
@@ -227,12 +244,12 @@ node ('python') {
         // useless default networking
         sh "sed -i 's/\\(^- cluster.${STACK_NAME}.kubernetes.networking.compute\\)/#\\1/' $model_path/kubernetes/compute.yml"
         // change keepalived VRID of K8S VIP
-        if (templateContext['default_context']['k8s_keepalived_vip_vrid']) {
-          def k8s_keepalived_vip_vrid = templateContext['default_context']['k8s_keepalived_vip_vrid']
+        if (templateContext[default_context]['k8s_keepalived_vip_vrid']) {
+          def k8s_keepalived_vip_vrid = templateContext[default_context]['k8s_keepalived_vip_vrid']
           sh "$reclass_tools add-key parameters._param.keepalived_vip_virtual_router_id $k8s_keepalived_vip_vrid $model_path/kubernetes/control.yml"
         }
         // insecure API binding
-        if (templateContext['default_context']['k8s_api_insecure_bind'] == 'True') {
+        if (templateContext[default_context]['k8s_api_insecure_bind'] == True) {
           sh "$reclass_tools add-key parameters.kubernetes.master.apiserver.insecure_address 0.0.0.0 $model_path/kubernetes/control.yml"
         }
       }
@@ -268,9 +285,9 @@ node ('python') {
     archiveArtifacts artifacts: "cfg01.${STACK_NAME}-config.iso"
   }
   stage('Update VMs images if needed'){
-    mcpVersion = templateContext['default_context']['mcp_version']
+    mcpVersion = templateContext[default_context]['mcp_version']
     if (mcpVersion == '') {
-      mcpVersion = 'testing'
+      mcpVersion = default_version
     }
     vcpImages = ['ubuntu-16-04-x64-mcp',
                  'ubuntu-14-04-x64-mcp', ]
@@ -294,9 +311,9 @@ node ('python') {
     }
   }
   stage('Update day01 image if needed'){
-    mcpVersion = templateContext['default_context']['mcp_version']
+    mcpVersion = templateContext[default_context]['mcp_version']
     if (mcpVersion == '') {
-      mcpVersion = 'testing'
+      mcpVersion = default_version
     }
     day01ImageUrl = "http://ci.mcp.mirantis.net:8085/images/cfg01-day01-${mcpVersion}.qcow2"
     // Get md5sum of the image
@@ -318,20 +335,20 @@ node ('python') {
   stage ('Deploy heat stack'){
     build(job: 'create-heat-stack-for-mcp-env',
           parameters: [
-            [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-            [$class: 'StringParameterValue', name: 'OS_AZ', value: OS_AZ],
-            [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-            [$class: 'BooleanParameterValue', name: 'DELETE_STACK', value: Boolean.valueOf(DELETE_STACK)],
-            [$class: 'StringParameterValue', name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT],
-            [$class: 'StringParameterValue', name: 'MCP_VERSION', value: mcpVersion],
-            [$class: 'StringParameterValue', name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX],
-            [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT],
-            [$class: 'BooleanParameterValue', name: 'STACK_FULL', value: STACK_FULL.toBoolean()],
-            [$class: 'BooleanParameterValue', name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH.toBoolean()],
-            [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
-            [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-            [$class: 'StringParameterValue', name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC],
-            [$class: 'BooleanParameterValue', name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()],
+            string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+            string( name: 'OS_AZ', value: OS_AZ),
+            string( name: 'STACK_NAME', value: STACK_NAME),
+            booleanParam( name: 'DELETE_STACK', value: Boolean.valueOf(DELETE_STACK)),
+            string( name: 'COMPUTE_NODES_COUNT', value: COMPUTE_NODES_COUNT),
+            string( name: 'MCP_VERSION', value: mcpVersion),
+            string( name: 'FLAVOR_PREFIX', value: FLAVOR_PREFIX),
+            string( name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT),
+            booleanParam( name: 'STACK_FULL', value: STACK_FULL.toBoolean()),
+            booleanParam( name: 'COMPUTE_BUNCH', value: COMPUTE_BUNCH.toBoolean()),
+            string( name: 'STACK_INSTALL', value: STACK_INSTALL),
+            string( name: 'REFSPEC', value: REFSPEC),
+            string( name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC),
+            booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
           ])
   }
   stage ('Provision nodes using MAAS'){
@@ -345,7 +362,7 @@ node ('python') {
       ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       ssh_cmd = "ssh $ssh_opt"
       ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
-      sshagent (credentials: ['mcp-scale-jenkins']) {
+      sshagent (credentials: [ssh_user]) {
         sh "scp $ssh_opt /tmp/machines_template.yml.src $ssh_user@$cfg01_ip:machines_template.yml.src"
         sh "scp $ssh_opt /tmp/dhcp_snippets.yml.src $ssh_user@$cfg01_ip:dhcp_snippets.yml.src"
         sh "$ssh_cmd_cfg01 sudo cp dhcp_snippets.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/dhcp_snippets.yml"
@@ -399,11 +416,11 @@ node ('python') {
     try {
       build(job: 'run-deploy-job-on-cfg01',
             parameters: [
-              [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-              [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-              [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-              [$class: 'StringParameterValue', name: 'STACK_INSTALL', value: STACK_INSTALL],
-              [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT]
+              string( name: 'REFSPEC', value: REFSPEC),
+              string( name: 'STACK_NAME', value: STACK_NAME),
+              string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+              string( name: 'STACK_INSTALL', value: STACK_INSTALL),
+              string( name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT),
             ])
     } catch (Exception e) {
       job_failed = true
@@ -423,12 +440,12 @@ node ('python') {
                      "<testcase classname='ScaleDeployment' name='Cluster deploy with$deploy_settings' time='1'> "
       }
     junit_report = junit_report + '</testcase></testsuite></testsuites>'
-    writeFile file: '/tmp/scale_cluster_deploy_junut.xml', text: junit_report
+    writeFile file: xml_path, text: junit_report
     report_cmd = "$report --testrail-run-update --verbose --testrail-url https://mirantis.testrail.com --testrail-user 'mos-scale-jenkins@mirantis.com' " +
                  " --testrail-password 'Qwerty1234' --testrail-project 'Mirantis Cloud Platform' --testrail-milestone 'MCP1.1' " +
                  "--testrail-suite '[MCP_X] integration cases' --testrail-plan-name '[MCP-Q1]System-$fDate' --env 'Dev cloud' " +
                  "--xunit-name-template '{methodname}' --testrail-name-template '{title}' " +
-                 '/tmp/scale_cluster_deploy_junut.xml'
+                 xml_path
     try {
       if (params.REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL){
          sh "$report_cmd"
@@ -449,17 +466,17 @@ node ('python') {
         else {
           build(job: 'run-tests-mcp-env',
             parameters: [
-              [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-              [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-              [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-              [$class: 'StringParameterValue', name: 'TEST_IMAGE', value: 'sergeygals/rally'],
-              [$class: 'StringParameterValue', name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'],
-              [$class: 'StringParameterValue', name: 'RALLY_CONFIG_BRANCH', value: 'master'],
-              [$class: 'StringParameterValue', name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'],
-              [$class: 'StringParameterValue', name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'],
-              [$class: 'BooleanParameterValue', name: 'RALLY_SCENARIOS_RECURSIVE', value: true],
-              [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)],
-              [$class: 'BooleanParameterValue', name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)],
+              string( name: 'REFSPEC', value: REFSPEC),
+              string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+              string( name: 'STACK_NAME', value: STACK_NAME),
+              string( name: 'TEST_IMAGE', value: 'sergeygals/rally'),
+              string( name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'),
+              string( name: 'RALLY_CONFIG_BRANCH', value: 'master'),
+              string( name: 'RALLY_SCENARIOS', value: 'rally-scenarios-light'),
+              string( name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'),
+              booleanParam( name: 'RALLY_SCENARIOS_RECURSIVE', value: true),
+              booleanParam( name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_TESTRAIL)),
+              booleanParam( name: 'REPORT_RALLY_RESULTS_TO_SCALE', value: Boolean.valueOf(REPORT_RALLY_RESULTS_TO_SCALE)),
             ]
           )
         }

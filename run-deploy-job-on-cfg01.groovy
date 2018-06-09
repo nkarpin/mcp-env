@@ -54,12 +54,12 @@ node ('python') {
       ']}'
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
-          [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-          [$class: 'StringParameterValue', name: 'JOB_NAME', value: 'deploy_openstack'],
-          [$class: 'StringParameterValue', name: 'JOB_JSON', value: JSON],
-          [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-          [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
-          [$class: 'StringParameterValue', name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT]
+          string( name: 'REFSPEC', value: REFSPEC),
+          string( name: 'JOB_NAME', value: 'deploy_openstack'),
+          string( name: 'JOB_JSON', value: JSON),
+          string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+          string( name: 'STACK_NAME', value: STACK_NAME),
+          string( name: 'OPENSTACK_ENVIRONMENT', value: OPENSTACK_ENVIRONMENT),
           ])
     }
 }

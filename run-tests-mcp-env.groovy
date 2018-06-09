@@ -31,9 +31,9 @@ node ('python') {
   stage ('Prepare cluster for run rally'){
     build(job: 'prepare-tests-mcp-env',
       parameters: [
-          [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-          [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-          [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+        string( name: 'REFSPEC', value: REFSPEC),
+        string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+        string( name: 'STACK_NAME', value: STACK_NAME),
         ])
   }
   stage ('Run rally'){
@@ -65,13 +65,13 @@ node ('python') {
       ']}'
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
-            [$class: 'StringParameterValue', name: 'REFSPEC', value: REFSPEC],
-            [$class: 'StringParameterValue', name: 'JOB_NAME', value: 'run-rally-cfg01'],
-            [$class: 'StringParameterValue', name: 'JOB_TIMEOUT', value: '8'],
-            [$class: 'StringParameterValue', name: 'JOB_ATTEMPTS', value: '1'],
-            [$class: 'StringParameterValue', name: 'JOB_JSON', value: JSON],
-            [$class: 'StringParameterValue', name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME],
-            [$class: 'StringParameterValue', name: 'STACK_NAME', value: STACK_NAME],
+            string( name: 'REFSPEC', value: REFSPEC),
+            string( name: 'JOB_NAME', value: 'run-rally-cfg01'),
+            string( name: 'JOB_TIMEOUT', value: '8'),
+            string( name: 'JOB_ATTEMPTS', value: '1'),
+            string( name: 'JOB_JSON', value: JSON),
+            string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+            string( name: 'STACK_NAME', value: STACK_NAME),
           ])
       report_prefix = RALLY_SCENARIOS.replaceAll('/', '.')
       sh 'rm -f artifacts.zip'

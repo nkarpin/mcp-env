@@ -1,3 +1,6 @@
+String SUCCESS = 'SUCCESS'
+def sleep_time = 60
+
 node ('python') {
   currentBuild.description = STACK_NAME
   // Configure OpenStack credentials and command
@@ -40,7 +43,7 @@ node ('python') {
       crumbl = out.trim()
       out = sh script: "curl -s -H $crumbl -X POST http://$cfg01_ip:8081/job/$JOB_NAME/build --user $jenkins_user:$jenkins_pass --data-urlencode json='$JOB_JSON'", returnStdout: true
     }
-    sleep 60
+    sleep sleep_time
     out = sh script: "curl -s -X GET 'http://$cfg01_ip:8081/job/$JOB_NAME/lastBuild/api/json?tree=number' --user $jenkins_user:$jenkins_pass | jq -r '.number'", returnStdout: true
     build_number = out.trim()
     print 'Build number is ' + build_number
@@ -50,13 +53,13 @@ node ('python') {
       out = ''
       status = ''
       count = 0
-      while (status != 'SUCCESS' && count <= "$JOB_ATTEMPTS".toInteger() ) {
+      while (status != SUCCESS && count <= "$JOB_ATTEMPTS".toInteger() ) {
         count += 1
         print 'Iteration number ' + count
-        while (out.trim() != 'SUCCESS' && count <= "$JOB_ATTEMPTS".toInteger() ){
+        while (out.trim() != SUCCESS && count <= "$JOB_ATTEMPTS".toInteger() ){
           out = sh script: "curl -s -X GET 'http://$cfg01_ip:8081/job/$JOB_NAME/lastBuild/api/json?tree=result' --user $jenkins_user:$jenkins_pass | jq -r '.result'", returnStdout: true
           print ("The job result is $out")
-          if (out.trim() != 'null' && out.trim() != 'SUCCESS' && count <= "$JOB_ATTEMPTS".toInteger() ) {
+          if (out.trim() != 'null' && out.trim() != SUCCESS && count <= "$JOB_ATTEMPTS".toInteger() ) {
             print 'Job FAILURE try to start next one'
             // Need to use crumb if catched earlier
             if (binding.hasVariable('crumbl')) {
@@ -70,12 +73,12 @@ node ('python') {
           } else {
             status = out.trim()
           }
-          if (status != 'SUCCESS'){
-            sleep 60
+          if (status != SUCCESS){
+            sleep sleep_time
           }
         }
       }
-      if (status != 'SUCCESS'){
+      if (status != SUCCESS){
         error("Something wrong with jobs! After $JOB_ATTEMPTS tryes the last status is $out")
       }
     }
