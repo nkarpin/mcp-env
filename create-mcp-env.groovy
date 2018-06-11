@@ -157,14 +157,13 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes $neededClass $infraInitFile"
       }
     }
-    // Always clone mcp-scale-jenkins user and qa_scale ssh group from master. Needed for old releases ( older then https://gerrit.mcp.mirantis.net/#/c/19499/)
+    // Always clone mcp-scale-jenkins user from master and add it to qa_scale ssh group. Needed for old releases (older then https://gerrit.mcp.mirantis.net/#/c/19499/)
     masterMcpScaleJenkinsUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/members/mcp-scale-jenkins.yml;hb=refs/heads/master'"
-    masterQaScaleUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/qa_scale.yml;hb=refs/heads/master'"
     systemLevelPath = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/system"
     McpScaleFile = systemLevelPath + '/openssh/server/team/members/mcp-scale-jenkins.yml'
     QaScaleFile = systemLevelPath + '/openssh/server/team/qa_scale.yml'
     sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
-    sh "curl -s ${masterQaScaleUrl} > ${QaScaleFile}"
+    sh "$reclass_tools add-key --merge classes system.openssh.server.team.members.mcp-scale-jenkins ${QaScaleFile}"
     if (!STACK_FULL.toBoolean()) {
       println 'Setting workarounds for MAAS'
       // Modify MAAS yaml if it necessary
