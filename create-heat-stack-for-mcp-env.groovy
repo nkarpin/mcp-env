@@ -49,7 +49,9 @@ node ('python') {
           def install_stacklight = 'false'
           def install_maas = 'false'
           def nameservers = '8.8.8.8'
-          if (OPENSTACK_ENVIRONMENT == 'devcloud') {
+          if (OPENSTACK_ENVIRONMENT == 'presales') {
+            nameservers = '10.10.0.15'
+          } else if (OPENSTACK_ENVIRONMENT == 'devcloud') {
             nameservers = '172.18.176.6'
           }
           if ( STACK_FULL.toBoolean() ) { network01_dhcp = 'false' }
