@@ -349,7 +349,11 @@ node ('python') {
             string( name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC),
             booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
           ])
+
+    sh "$openstack image delete cfg01-$STACK_NAME-config"
+
   }
+
   stage ('Provision nodes using MAAS'){
     if ( MAAS_ENABLE.toBoolean() ) {
       def kubernetes = 'no'
