@@ -14,6 +14,14 @@ ruleset {
     // TBD
     exclude 'ImplementationAsType'
   }
+  ruleset('rulesets/dry.xml') {
+    DuplicateNumberLiteral {
+      ignoreNumbers = '0,1,2,3'
+    }
+    DuplicateStringLiteral {
+      ignoreStrings = ', ,null,rm -rf archive,REFSPEC,OPENSTACK_ENVIRONMENT,STACK_NAME,STACK_INSTALL,OS_PROJECT_NAME,rm -f ,k8s_keepalived_vip_vrid,mcp_version'
+    }
+  }
   ruleset('rulesets/exceptions.xml'){
     // Not necessarily an issue
     exclude 'CatchException'

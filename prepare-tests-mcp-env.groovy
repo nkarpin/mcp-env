@@ -21,8 +21,6 @@ node ('python') {
   openstack = 'set +x; venv/bin/openstack '
   vpython = 'venv/bin/python'
   report = 'venv/bin/report'
-  jenkins_user = 'admin'
-  jenkins_pass = 'r00tme'
   stage ('Build venv'){
       sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient 'jenkins-job-builder>=2.0.0.0b2' junitparser git+https://github.com/dis-xcom/testrail_reporter"
   }
@@ -34,7 +32,7 @@ node ('python') {
     ssh_cmd = "ssh $ssh_opt"
     ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
     rally_node = "cfg01.${STACK_NAME}.local"
-    sshagent (credentials: ['mcp-scale-jenkins']) {
+    sshagent (credentials: [ssh_user]) {
       sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install pkgs=[\\\'apt-transport-https\\\',\\\'ca-certificates\\\',\\\'curl\\\',\\\'build-essential\\\',\\\'python-dev\\\',\\\'gcc\\\']"
       writeFile file: '/tmp/cmd.sh', text: 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nadd-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
       sh "scp $ssh_opt /tmp/cmd.sh $ssh_user@$cfg01_ip:/tmp/cmd.sh"
@@ -51,7 +49,7 @@ node ('python') {
     sh "cd files; PATH=${PATH}:${WORKSPACE}/venv/bin ./deploy-run-rally-cfg01-job.sh run-rally-cfg01 $cfg01_ip"
   }
   stage ('Prepare OpenStack cluster for rally tests'){
-    sshagent (credentials: ['mcp-scale-jenkins']) {
+    sshagent (credentials: [ssh_user]) {
       sh "$ssh_cmd_cfg01 virtualenv /home/$ssh_user/venv"
       remote_ssh_cmd(cfg01_ip, "sudo salt --out=newline_values_only --out-file=./openrc 'ctl01*' cmd.run 'cat /root/keystonercv3'")
       sh "$ssh_cmd_cfg01 /home/$ssh_user/venv/bin/pip install python-openstackclient"
