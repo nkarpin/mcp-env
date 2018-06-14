@@ -135,7 +135,7 @@ node ('python') {
           break
         case 'opencontrail':
           opencontrail_enabled = true
-          templateContext[default_context]['opencontrail_context'] = True
+          templateContext[default_context][opencontrail_context] = True
           templateContext[default_context]['openstack_network_engine'] = 'opencontrail'
           break
       }
