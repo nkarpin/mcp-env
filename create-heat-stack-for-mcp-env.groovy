@@ -67,9 +67,6 @@ node ('python') {
           if (common.checkContains(STACK_INSTALL, 'cicd')) { install_cicd = True }
           if (common.checkContains(STACK_INSTALL, 'contrail')) { install_contrail = True }
           if (common.checkContains(STACK_INSTALL, 'stacklight')) { install_stacklight = True }
-          out = sh script: "$openstack volume list | grep -w cfg01-${STACK_NAME}-config | awk '{print \$2}'", returnStdout: true
-          disk_drive_id = out.trim()
-          sh "sed -i 's/volume01-id/${disk_drive_id}/' template/$HEAT_TEMPLATE_FILE"
           sh "$heat create -e env/$HEAT_ENV_FILE --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter cluster_nameservers=${nameservers} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} --parameter mcp_version=${MCP_VERSION} --parameter network01_dhcp=${network01_dhcp} --parameter install_openstack=${install_openstack} --parameter install_k8s=${install_k8s} --parameter install_cicd=${install_cicd} --parameter install_stacklight=${install_stacklight} --parameter install_contrail=${install_contrail} --parameter stack_full=${STACK_FULL} --parameter compute_bunch=${COMPUTE_BUNCH} --parameter install_maas=${install_maas} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
         } else {
           sh "$heat create -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
