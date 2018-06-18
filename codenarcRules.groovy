@@ -19,7 +19,7 @@ ruleset {
       ignoreNumbers = '0,1,2,3'
     }
     DuplicateStringLiteral {
-      ignoreStrings = ', ,null,rm -rf archive,REFSPEC,OPENSTACK_ENVIRONMENT,STACK_NAME,STACK_INSTALL,OS_PROJECT_NAME,rm -f ,k8s_keepalived_vip_vrid,mcp_version,presales'
+      ignoreStrings = ', ,null,rm -rf archive,REFSPEC,OPENSTACK_ENVIRONMENT,STACK_NAME,STACK_INSTALL,OS_PROJECT_NAME,rm -f ,k8s_keepalived_vip_vrid,mcp_version,presales,OPENCONTRAIL_VERSION'
     }
   }
   ruleset('rulesets/exceptions.xml'){
