@@ -49,7 +49,7 @@ node ('python') {
     sh "cd files; PATH=${PATH}:${WORKSPACE}/venv/bin ./deploy-run-rally-cfg01-job.sh run-rally-cfg01 $cfg01_ip"
   }
   stage ('Prepare OpenStack cluster for rally tests'){
-    if (! K8S_RALLY) {
+    if (! K8S_RALLY.toBoolean()) {
       sshagent (credentials: [ssh_user]) {
         sh "$ssh_cmd_cfg01 virtualenv /home/$ssh_user/venv"
         remote_ssh_cmd(cfg01_ip, "sudo salt --out=newline_values_only --out-file=./openrc 'ctl01*' cmd.run 'cat /root/keystonercv3'")
