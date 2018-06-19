@@ -10,7 +10,7 @@ node ('python'){
               string(name: 'OS_AZ', value: project_name),
               string(name: 'STACK_INSTALL', value: 'core,cicd,openstack,stacklight,opencontrail'),
               booleanParam( name: 'DELETE_STACK', value: true),
-              booleanParam( name: 'MAAS_ENABLE', value: true),
+              booleanParam( name: 'MAAS_ENABLE', value: false),
               booleanParam( name: 'RUN_TESTS', value: true),
               booleanParam( name: 'REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL', value: false),
               booleanParam( name: 'REPORT_RALLY_RESULTS_TO_TESTRAIL', value: false),
