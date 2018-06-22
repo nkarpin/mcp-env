@@ -27,6 +27,7 @@
  *
  *   DELETE_STACK                           Delete stack with the same name
  *   STACK_INSTALL                          Comma separated list of components to install
+ *   OPENCONTRAIL_VERSION                   Version of opencontrail will be deployed
  *
  *   MAAS_ENABLE                            Hosts provisioning using MAAS
  *
@@ -137,6 +138,7 @@ node ('python') {
           opencontrail_enabled = true
           templateContext[default_context][opencontrail_context] = True
           templateContext[default_context]['openstack_network_engine'] = 'opencontrail'
+          templateContext[default_context]['opencontrail_version'] = OPENCONTRAIL_VERSION
           break
       }
     }
@@ -264,10 +266,17 @@ node ('python') {
           sh "cp -f $source_patch_path/openstack-compute-opencontrail-net.yml.src $model_path/opencontrail/networking/compute.yml"
           sh "sed -i 's/opencontrail_compute_iface: .*/opencontrail_compute_iface: ens5/' $model_path/opencontrail/init.yml"
         }
-        sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
         sh "sed -i 's/opencontrail_compute_iface_mask: .*/opencontrail_compute_iface_mask: 16/' $model_path/opencontrail/init.yml"
-        sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/analytics.yml"
-        sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/control.yml"
+        if ( OPENCONTRAIL_VERSION == '4.0' ) {
+          sh "cp -f $source_patch_path/opencontrail-oc4-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
+          sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: ens3/' $model_path/opencontrail/analytics.yml"
+          sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: ens3/' $model_path/opencontrail/control.yml"
+        }
+        else {
+          sh "cp -f $source_patch_path/opencontrail-virtual.yml.src $model_path/opencontrail/networking/virtual.yml"
+          sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/analytics.yml"
+          sh "sed -i 's/keepalived_vip_interface: eth1/keepalived_vip_interface: eth0/' $model_path/opencontrail/control.yml"
+        }
       }
     }
   }
@@ -348,6 +357,7 @@ node ('python') {
             string( name: 'REFSPEC', value: REFSPEC),
             string( name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC),
             booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
+            string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
           ])
   }
   stage ('Provision nodes using MAAS'){
