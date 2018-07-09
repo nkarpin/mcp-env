@@ -374,7 +374,11 @@ node ('python') {
             booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
             string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
           ])
+
+    sh "$openstack image delete cfg01-$STACK_NAME-config"
+
   }
+
   stage ('Provision nodes using MAAS'){
     if ( MAAS_ENABLE.toBoolean() ) {
       def kubernetes = 'no'
