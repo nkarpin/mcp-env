@@ -6,4 +6,4 @@ parameters:
           value: host node1 { hardware ethernet 02:61:bb:d8:2d:ab ; fixed-address 10.10.99.99; }
           description: Static IP address for node1 node
           enabled: true
-          subnet: 10.10.0.0/16
+          subnet: deploy_network

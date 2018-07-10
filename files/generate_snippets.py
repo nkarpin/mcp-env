@@ -32,7 +32,7 @@ dhcp_template = Template('''
           value: host {{name}} { hardware ethernet {{mac_addr}} ; fixed-address {{ip_addr}}; }
           description: Static IP address for {{name}} node
           enabled: true
-          subnet: 10.10.0.0/16''')
+          subnet: deploy_network''')
 
 machines_template = Template('''
         {{name}}:
@@ -40,7 +40,7 @@ machines_template = Template('''
             mac: {{mac_addr}}
             mode: static
             ip: {{ip_addr}}
-            subnet: 10.10.0.0/16
+            subnet: deploy_network
           power_parameters:
             power_type: nova
             power_nova_id: {{uuid}}
