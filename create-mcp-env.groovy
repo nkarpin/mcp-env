@@ -377,6 +377,10 @@ node ('python') {
 
     sh "$openstack image delete cfg01-$STACK_NAME-config"
 
+    out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
+    cfg01_ip = out.trim()
+    currentBuild.description += " - ${cfg01_ip}"
+
   }
 
   stage ('Provision nodes using MAAS'){
@@ -384,8 +388,6 @@ node ('python') {
       def kubernetes = 'no'
       if ( kubernetes_enabled ) { kubernetes = 'yes' }
       sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME $kubernetes", returnStdout: true
-      out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
-      cfg01_ip = out.trim()
       ssh_user = 'mcp-scale-jenkins'
       ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       ssh_cmd = "ssh $ssh_opt"
