@@ -73,13 +73,19 @@ String ssh_cmd = "ssh $ssh_opt"
 String apt_server = '10.10.0.14'
 String cfgBootstrapDriveUrl = ''
 
+if (common.validInputParam('OPENSTACK_API_CREDENTIALS')) {
+    openstack_credentials_id = OPENSTACK_API_CREDENTIALS
+} else {
+    openstack_credentials_id = 'openstack-devcloud-credentials'
+}
+
 
 node ('python') {
   currentBuild.description = STACK_NAME
   // Checkout scm specified in job configuration
   checkout scm
   // Configure OpenStack credentials and command
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: openstack_credentials_id,
       usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD'], ]) {
           env.OS_USERNAME = OS_USERNAME
           env.OS_PASSWORD = OS_PASSWORD
@@ -89,6 +95,15 @@ node ('python') {
             env.OS_REGION_NAME = 'RegionOne'
             env.OS_ENDPOINT_TYPE = 'public'
             env.OS_IDENTITY_API_VERSION = '2'
+          }
+          if (OPENSTACK_ENVIRONMENT == 'oscore_devcloud') {
+            env.OS_AUTH_URL='https://172.18.250.80:5000/v3'
+            env.OS_PROJECT_ID='5841c7171145452cb0582be75c1fb2fe'
+            env.OS_USER_DOMAIN_NAME='mirantis.net'
+            env.OS_REGION_NAME = 'RegionOne'
+            env.OS_INTERFACE = 'public'
+            env.OS_IDENTITY_API_VERSION = '3'
+            env.OS_CACERT= '/etc/ssl/certs/ca-certificates.crt'
           }
   }
   openstack = 'set +x; venv/bin/openstack '
@@ -423,6 +438,7 @@ node ('python') {
             booleanParam( name: 'TENANT_TELEMETRY_ENABLE', value: templateContext[default_context].get('tenant_telemetry_enabled', False).toBoolean()),
             string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
             string( name: 'CFG_BOOTSTRAP_DRIVE_URL', value: cfgBootstrapDriveUrl),
+            string( name: 'OPENSTACK_API_CREDENTIALS', value: openstack_credentials_id),
           ])
 
     out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true

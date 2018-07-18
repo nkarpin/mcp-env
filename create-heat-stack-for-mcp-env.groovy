@@ -1,13 +1,22 @@
+def common = new com.mirantis.mk.Common()
+
 String CREATE_COMPLETE = 'CREATE_COMPLETE'
 String CREATE_IN_PROGRESS = 'CREATE_IN_PROGRESS'
 String True = 'True'
 String False = 'False'
 String STACK_INSTALL = 'STACK_INSTALL'
+def network_port_security_enabled = true
+
+if (common.validInputParam('OPENSTACK_API_CREDENTIALS')) {
+    openstack_credentials_id = OPENSTACK_API_CREDENTIALS
+} else {
+    openstack_credentials_id = 'openstack-devcloud-credentials'
+}
 
 node ('python') {
     currentBuild.description = STACK_NAME
     // Configure OpenStack credentials and command
-    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'openstack-devcloud-credentials',
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: openstack_credentials_id,
         usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD'], ]) {
             env.OS_USERNAME = OS_USERNAME
             env.OS_PASSWORD = OS_PASSWORD
@@ -17,6 +26,16 @@ node ('python') {
               env.OS_REGION_NAME = 'RegionOne'
               env.OS_ENDPOINT_TYPE = 'public'
               env.OS_IDENTITY_API_VERSION = '2'
+            }
+            if (OPENSTACK_ENVIRONMENT == 'oscore_devcloud') {
+              env.OS_AUTH_URL='https://172.18.250.80:5000/v3'
+              env.OS_PROJECT_ID='5841c7171145452cb0582be75c1fb2fe'
+              env.OS_USER_DOMAIN_NAME='mirantis.net'
+              env.OS_REGION_NAME = 'RegionOne'
+              env.OS_INTERFACE = 'public'
+              env.OS_IDENTITY_API_VERSION = '3'
+              env.OS_CACERT= '/etc/ssl/certs/ca-certificates.crt'
+              network_port_security_enabled = false
             }
     }
     openstack = 'set +x; venv/bin/openstack '
@@ -46,7 +65,6 @@ node ('python') {
               ])
         }
         if (params.HEAT_ENV_FILE != ''){
-          def common = new com.mirantis.mk.Common()
           def network01_dhcp = True
           def install_openstack = False
           def install_k8s = False
@@ -62,7 +80,7 @@ node ('python') {
           def nameservers = '8.8.8.8'
           if (OPENSTACK_ENVIRONMENT == 'presales') {
             nameservers = '10.10.0.15'
-          } else if (OPENSTACK_ENVIRONMENT == 'devcloud') {
+          } else if (OPENSTACK_ENVIRONMENT == 'devcloud' || OPENSTACK_ENVIRONMENT == 'oscore_devcloud') {
             nameservers = '172.18.176.6'
           }
           if ( STACK_FULL.toBoolean() ) { network01_dhcp = False }
@@ -100,6 +118,7 @@ node ('python') {
             "--parameter opencontrail_version=${OPENCONTRAIL_VERSION} " +
             "--parameter security_group=${security_group} " +
             "--parameter cfg_bootstrap_drive=${CFG_BOOTSTRAP_DRIVE_URL} " +
+            "--parameter network_port_security_enabled=${network_port_security_enabled} " +
             "-t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
           print ('Try to start ' + cmd)
           sh cmd
