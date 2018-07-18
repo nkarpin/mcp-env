@@ -399,8 +399,8 @@ node ('python') {
         sh "$ssh_cmd_cfg01 sudo cp machines_template.yml.src /srv/salt/reclass/classes/cluster/$STACK_NAME/infra/scale-ci-patch/machines_template.yml"
 
         //Fix for the https://mirantis.jira.com/browse/PROD-19174
-        //sh "$ssh_cmd_cfg01 wget https://raw.githubusercontent.com/salt-formulas/salt-formula-maas/master/_modules/maas.py"
-        //sh "$ssh_cmd_cfg01 sudo cp maas.py /srv/salt/env/prd/_modules/maas.py"
+        sh "$ssh_cmd_cfg01 wget -O cluster.yml https://goo.gl/bV794z"
+        sh "$ssh_cmd_cfg01 sudo cp cluster.yml /srv/salt/reclass/classes/system/maas/region/cluster.yml"
 
         //Apply several fixes for MAAS and provision compute hosts
         sh "scp $ssh_opt $WORKSPACE/files/fixes-for-maas.sh $ssh_user@$cfg01_ip:fixes-for-maas.sh"
