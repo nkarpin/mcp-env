@@ -144,6 +144,8 @@ node ('python') {
         case 'ceph':
           ceph_enabled = true
           templateContext[default_context]['ceph_enabled'] = True
+          templateContext[default_context]['ceph_osd_count'] = OSD_NODES_COUNT
+          templateContext[default_context]['ceph_osd_node_count'] = OSD_NODES_COUNT
           break
       }
     }
