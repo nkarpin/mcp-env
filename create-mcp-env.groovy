@@ -166,8 +166,11 @@ node ('python') {
   }
   stage ('Modify config drive image'){
     model_path = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/cluster/${STACK_NAME}"
-    sh "rm cfg01.${STACK_NAME}-config.iso"
-    sh "rm /tmp/cfg01.${STACK_NAME}-config/meta-data"
+    sh "rm -v cfg01.${STACK_NAME}-config.iso"
+    common.infoMsg('Backupping origin structure')
+    sh(script: "mkdir -vp /tmp/cfg01.${STACK_NAME}-config/original_data/")
+    sh(script: "rsync -aRr /tmp/cfg01.${STACK_NAME}-config/ /tmp/cfg01.${STACK_NAME}-config/original_data/ || true")
+    sh "rm -v /tmp/cfg01.${STACK_NAME}-config/meta-data"
     // Calculation openssh_groups variable for old releases ( older then https://gerrit.mcp.mirantis.net/#/c/19109/)
     opensshGroups = templateContext[default_context]['openssh_groups'].tokenize(split_char)
     infraInitFile = model_path + '/infra/init.yml'
