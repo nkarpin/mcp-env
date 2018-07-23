@@ -496,7 +496,12 @@ node ('python') {
         def default_branch = 'master'
         if (openstack_enabled){
           rally_scenario = 'rally-scenarios-light'
-          rally_image = 'sergeygals/rally'
+          if ( mcpVersion == '2018.4.0'){
+            rally_image = 'sergeygals/rally'
+          }
+          else {
+            rally_image = 'xrally/xrally-openstack:1.2.0'
+          }
         }
         if (kubernetes_enabled){
           rally_scenario = 'rally-k8s'
