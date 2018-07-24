@@ -193,6 +193,9 @@ node ('python') {
     QaScaleFile = systemLevelPath + '/openssh/server/team/qa_scale.yml'
     sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
     sh "$reclass_tools add-key --merge classes system.openssh.server.team.members.mcp-scale-jenkins ${QaScaleFile}"
+    // Add Validate job from master to cluster level
+    sh "curl -s 'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=jenkins/client/job/validate.yml;hb=refs/heads/master' > $model_path/infra/validate.yml"
+    sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.validate $model_path/infra/config.yml"
     if (!STACK_FULL.toBoolean()) {
       println 'Setting workarounds for MAAS'
       // Modify MAAS yaml if it necessary
@@ -501,12 +504,7 @@ node ('python') {
         def default_branch = 'master'
         if (openstack_enabled){
           rally_scenario = 'rally-scenarios-light'
-          if ( mcpVersion == '2018.4.0'){
-            rally_image = 'sergeygals/rally'
-          }
-          else {
-            rally_image = 'xrally/xrally-openstack:1.2.0'
-          }
+          rally_image = 'xrally/xrally-openstack:1.2.0'
         }
         if (kubernetes_enabled){
           rally_scenario = 'rally-k8s'
@@ -522,7 +520,7 @@ node ('python') {
             string( name: 'RALLY_PLUGINS_REPO', value: 'https://github.com/Mirantis/rally-plugins'),
             string( name: 'RALLY_PLUGINS_BRANCH', value: default_branch),
             string( name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'),
-            string( name: 'RALLY_CONFIG_BRANCH', value: default_branch),
+            string( name: 'RALLY_CONFIG_BRANCH', value: 'stable'),
             string( name: 'RALLY_SCENARIOS', value: rally_scenario),
             string( name: 'RALLY_TASK_ARGS_FILE', value: 'job-params-light.yaml'),
             booleanParam( name: 'RALLY_SCENARIOS_RECURSIVE', value: true),
