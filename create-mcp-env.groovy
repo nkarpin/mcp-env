@@ -332,7 +332,7 @@ node ('python') {
         sh "wget -q -O ./scale-${vcpImage}${mcpVersion}.qcow2 ${vmImageUrl}"
         sh "md5sum ./scale-${vcpImage}${mcpVersion}.qcow2"
         sh "$openstack image delete scale-${vcpImage}${mcpVersion} || true"
-        sh "$openstack image create --disk-format qcow2 --file ./scale-${vcpImage}${mcpVersion}.qcow2 scale-${vcpImage}${mcpVersion}"
+        sh "$openstack image create --public --disk-format qcow2 --file ./scale-${vcpImage}${mcpVersion}.qcow2 scale-${vcpImage}${mcpVersion}"
         sh "rm ./scale-${vcpImage}${mcpVersion}.qcow2"
       }
     }
