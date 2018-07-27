@@ -64,6 +64,9 @@ String file_suf = '.yaml'
 String default_version = 'testing'
 String xml_path = '/tmp/scale_cluster_deploy_junut.xml'
 String split_char = ','
+String ssh_user = 'mcp-scale-jenkins'
+String ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+String ssh_cmd = "ssh $ssh_opt"
 
 
 
@@ -387,15 +390,22 @@ node ('python') {
     currentBuild.description += " - ${cfg01_ip}"
 
   }
-
+  stage ('Create loop devices for CEPH'){
+    if ( ceph_enabled ){
+      ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
+      sshagent (credentials: [ssh_user]) {
+        sh "$ssh_cmd_cfg01 sudo salt \\\'osd*\\\' cmd.run \\\'/bin/dd if=/dev/zero of=/disk0 bs=1M count=5024\\\'"
+        sh "$ssh_cmd_cfg01 sudo salt \\\'osd*\\\' cmd.run \\\'/bin/dd if=/dev/zero of=/disk1 bs=1M count=5024\\\'"
+        sh "$ssh_cmd_cfg01 sudo salt \\\'osd*\\\' cmd.run \\\'/sbin/losetup /dev/loop20 /disk0\\\'"
+        sh "$ssh_cmd_cfg01 sudo salt \\\'osd*\\\' cmd.run \\\'/sbin/losetup /dev/loop21 /disk1\\\'"
+      }
+    }
+  }
   stage ('Provision nodes using MAAS'){
     if ( MAAS_ENABLE.toBoolean() ) {
       def kubernetes = 'no'
       if ( kubernetes_enabled ) { kubernetes = 'yes' }
       sh script: "$WORKSPACE/venv/bin/python2.7 $WORKSPACE/files/generate_snippets.py $STACK_NAME $kubernetes", returnStdout: true
-      ssh_user = 'mcp-scale-jenkins'
-      ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-      ssh_cmd = "ssh $ssh_opt"
       ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
       sshagent (credentials: [ssh_user]) {
         sh "scp $ssh_opt /tmp/machines_template.yml.src $ssh_user@$cfg01_ip:machines_template.yml.src"
