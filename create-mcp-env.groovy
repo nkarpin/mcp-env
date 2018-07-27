@@ -68,10 +68,11 @@ String split_char = ','
 String ssh_user = 'mcp-scale-jenkins'
 String ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 String ssh_cmd = "ssh $ssh_opt"
-
+String apt_server = '10.10.0.14'
 
 
 node ('python') {
+  timestamps{
   currentBuild.description = STACK_NAME
   // Checkout scm specified in job configuration
   checkout scm
@@ -105,6 +106,18 @@ node ('python') {
     templateContext[default_context]['cluster_name'] = STACK_NAME
     templateContext[default_context]['openldap_domain'] = STACK_NAME + domain_suf
     templateContext[default_context]['openstack_compute_count'] = COMPUTE_NODES_COUNT
+    offline_deployment = 'offline_deployment'
+    if (OFFLINE_DEPLOYMENT.toBoolean()) {
+      templateContext[default_context][offline_deployment] = True
+      templateContext[default_context]['local_repositories'] = True
+      templateContext[default_context]['aptly_server_hostname'] = 'apt'
+      templateContext[default_context]['aptly_server_deploy_address'] = apt_server
+      templateContext[default_context]['aptly_server_http_static_http_port'] = '8078'
+      templateContext[default_context]['aptly_server_control_address'] = apt_server
+      templateContext[default_context]['local_repo_url'] = apt_server
+    } else {
+      templateContext[default_context][offline_deployment] = False
+    }
     def stack_install_options = STACK_INSTALL.split(split_char)
     openstack_enabled = false
     kubernetes_enabled = false
@@ -324,7 +337,10 @@ node ('python') {
       mcpVersion = default_version
     }
     vcpImages = ['ubuntu-16-04-x64-mcp',
-                 'ubuntu-14-04-x64-mcp', ]
+                 'ubuntu-14-04-x64-mcp',]
+    if (OFFLINE_DEPLOYMENT.toBoolean()) {
+      vcpImages += 'mcp-offline-image-'
+    }
     for (vcpImage in vcpImages) {
       vmImageUrl = "http://ci.mcp.mirantis.net:8085/images/${vcpImage}${mcpVersion}.qcow2"
       // Get md5sum of the image which we need
@@ -336,7 +352,7 @@ node ('python') {
         println "Found the following images for VCP: ${vmImageId}"
       } catch (err) {
         println "Can't find images for VCP, creating a new one"
-        sh "wget -q -O ./scale-${vcpImage}${mcpVersion}.qcow2 ${vmImageUrl}"
+        sh "wget --progress=dot:giga -O ./scale-${vcpImage}${mcpVersion}.qcow2 ${vmImageUrl}"
         sh "md5sum ./scale-${vcpImage}${mcpVersion}.qcow2"
         sh "$openstack image delete scale-${vcpImage}${mcpVersion} || true"
         sh "$openstack image create --public --disk-format qcow2 --file ./scale-${vcpImage}${mcpVersion}.qcow2 scale-${vcpImage}${mcpVersion}"
@@ -384,6 +400,7 @@ node ('python') {
             string( name: 'REFSPEC', value: REFSPEC),
             string( name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC),
             booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
+            booleanParam( name: 'OFFLINE_DEPLOYMENT', value: OFFLINE_DEPLOYMENT.toBoolean()),
             string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
           ])
 
@@ -542,5 +559,6 @@ node ('python') {
         )
       }
     }
+  }
   }
 }

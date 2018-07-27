@@ -47,6 +47,7 @@ node ('python') {
           string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
           string( name: 'STACK_NAME', value: STACK_NAME),
           booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(K8S_RALLY)),
+          booleanParam( name: 'OFFLINE_DEPLOYMENT', value: Boolean.valueOf(OFFLINE_DEPLOYMENT)),
         ]
       )
     } catch (Exception e) {

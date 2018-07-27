@@ -63,13 +63,40 @@ node ('python') {
           }
           if ( STACK_FULL.toBoolean() ) { network01_dhcp = False }
           if ( MAAS_ENABLE.toBoolean() ) { install_maas = True }
+          if ( OFFLINE_DEPLOYMENT.toBoolean() ) {
+            security_group = 'security_group_offline'
+          } else {
+            security_group = 'security_group_online'
+          }
           if (common.checkContains(STACK_INSTALL, 'openstack')) { install_openstack = True }
           if (common.checkContains(STACK_INSTALL, 'k8s')) { install_k8s = True }
           if (common.checkContains(STACK_INSTALL, 'cicd')) { install_cicd = True }
           if (common.checkContains(STACK_INSTALL, 'contrail')) { install_contrail = True }
           if (common.checkContains(STACK_INSTALL, 'stacklight')) { install_stacklight = True }
           if (common.checkContains(STACK_INSTALL, 'ceph')) { install_ceph = True }
-          sh "$heat create -e env/$HEAT_ENV_FILE --parameter osd_node_count=${OSD_NODES_COUNT} --parameter cluster_node_count=${COMPUTE_NODES_COUNT} --parameter cluster_nameservers=${nameservers} --parameter flavor_prefix=${FLAVOR_PREFIX} --parameter cluster_zone=${OS_AZ} --parameter mcp_version=${MCP_VERSION} --parameter network01_dhcp=${network01_dhcp} --parameter install_openstack=${install_openstack} --parameter install_k8s=${install_k8s} --parameter install_cicd=${install_cicd} --parameter install_stacklight=${install_stacklight} --parameter install_ceph=${install_ceph} --parameter install_contrail=${install_contrail} --parameter stack_full=${STACK_FULL} --parameter compute_bunch=${COMPUTE_BUNCH} --parameter install_maas=${install_maas} --parameter opencontrail_version=${OPENCONTRAIL_VERSION} -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
+
+          cmd = "$heat create -e env/$HEAT_ENV_FILE " +
+            "--parameter osd_node_count=${OSD_NODES_COUNT} " +
+            "--parameter cluster_node_count=${COMPUTE_NODES_COUNT} " +
+            "--parameter cluster_nameservers=${nameservers} " +
+            "--parameter flavor_prefix=${FLAVOR_PREFIX} " +
+            "--parameter cluster_zone=${OS_AZ} " +
+            "--parameter mcp_version=${MCP_VERSION} " +
+            "--parameter network01_dhcp=${network01_dhcp} " +
+            "--parameter install_openstack=${install_openstack} " +
+            "--parameter install_k8s=${install_k8s} " +
+            "--parameter install_cicd=${install_cicd} " +
+            "--parameter install_stacklight=${install_stacklight} " +
+            "--parameter install_ceph=${install_ceph} " +
+            "--parameter install_contrail=${install_contrail} " +
+            "--parameter stack_full=${STACK_FULL} " +
+            "--parameter compute_bunch=${COMPUTE_BUNCH} " +
+            "--parameter install_maas=${install_maas} " +
+            "--parameter opencontrail_version=${OPENCONTRAIL_VERSION} " +
+            "--parameter security_group=${security_group} " +
+            "-t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
+          print ('Try to start ' + cmd)
+          sh cmd
         } else {
           sh "$heat create -t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
         }

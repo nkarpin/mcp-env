@@ -2,6 +2,9 @@ ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 jenkins_user = 'admin'
 jenkins_pass = 'r00tme'
 ssh_user = 'mcp-scale-jenkins'
+proxy_url = 'http://172.17.48.165:18888/'
+proxy_url_escaped = 'http:\\/\\/172.17.48.165:18888\\/'
+docker_systemd_file = '/lib/systemd/system/docker.service'
 def remote_ssh_cmd(server, command){
   writeFile file: '/tmp/cmd-tmp.sh', text: command
   sh "scp $ssh_opt /tmp/cmd-tmp.sh $ssh_user@$server:/tmp/cmd-tmp.sh"
@@ -32,9 +35,20 @@ node ('python') {
     ssh_cmd = "ssh $ssh_opt"
     ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
     rally_node = "cfg01.${STACK_NAME}.local"
+    if (OFFLINE_DEPLOYMENT.toBoolean()) {
+      proxy_option_curl = '-x ' + proxy_url
+      proxy_option_wget = '-e use_proxy=yes -e http_proxy=' + proxy_url
+      proxy_option_env = 'https_proxy=' + proxy_url + ' http_proxy=' + proxy_url
+    } else {
+      proxy_option_curl = ''
+      proxy_option_wget = ''
+      proxy_option_pip = ''
+      proxy_option_env = ''
+    }
     sshagent (credentials: [ssh_user]) {
       sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install pkgs=[\\\'apt-transport-https\\\',\\\'ca-certificates\\\',\\\'curl\\\',\\\'build-essential\\\',\\\'python-dev\\\',\\\'gcc\\\']"
-      writeFile file: '/tmp/cmd.sh', text: 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nadd-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+      writeFile file: '/tmp/cmd.sh', text: 'curl ' + proxy_option_curl + '-fsSL https://download.docker.com/linux/ubuntu/gpg | ' +
+        'sudo apt-key add -\nadd-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
       sh "scp $ssh_opt /tmp/cmd.sh $ssh_user@$cfg01_ip:/tmp/cmd.sh"
       sh "$ssh_cmd_cfg01 sudo salt-cp $rally_node /tmp/cmd.sh /tmp/tmp-cmd.sh"
       sh "$ssh_cmd_cfg01 sudo salt $rally_node cmd.run \\\'bash /tmp/tmp-cmd.sh\\\'"
@@ -42,15 +56,28 @@ node ('python') {
       writeFile file: '/tmp/docker-host.yml', text: '{"bip": "10.99.0.1/16", "fixed-cidr": "10.99.0.1/17"}'
       sh "scp $ssh_opt /tmp/docker-host.yml $ssh_user@$cfg01_ip:/tmp/docker-host.yml"
       sh "$ssh_cmd_cfg01 sudo mv /tmp/docker-host.yml /etc/docker/daemon.json"
-      sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install docker-ce refresh=true"
+      if (OFFLINE_DEPLOYMENT.toBoolean()) {
+        sh "$ssh_cmd_cfg01 sudo https_proxy=$proxy_url apt-get update"
+        sh "$ssh_cmd_cfg01 sudo https_proxy=$proxy_url apt-get install docker-ce"
+      } else {
+        sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install docker-ce refresh=true"
+      }
     }
   }
   stage ('Prepare OpenStack cluster for rally tests'){
     if (! K8S_RALLY.toBoolean()) {
       sshagent (credentials: [ssh_user]) {
-        sh "$ssh_cmd_cfg01 virtualenv /home/$ssh_user/venv"
+        sh "$ssh_cmd_cfg01 $proxy_option_env virtualenv /home/$ssh_user/venv"
+        if (OFFLINE_DEPLOYMENT.toBoolean()) {
+           remote_ssh_cmd(cfg01_ip, "grep HTTP_PROXY $docker_systemd_file || " +
+             'sudo sed -i ' +
+             "'s/\\[Service\\]/[Service]\\nEnvironment=\"HTTP_PROXY=$proxy_url_escaped\"/' " +
+             "$docker_systemd_file")
+           remote_ssh_cmd(cfg01_ip, 'sudo systemctl daemon-reload')
+           remote_ssh_cmd(cfg01_ip, 'sudo systemctl restart docker')
+        }
         remote_ssh_cmd(cfg01_ip, "sudo salt --out=newline_values_only --out-file=./openrc 'ctl01*' cmd.run 'cat /root/keystonercv3'")
-        sh "$ssh_cmd_cfg01 /home/$ssh_user/venv/bin/pip install python-openstackclient"
+        sh "$ssh_cmd_cfg01 $proxy_option_env /home/$ssh_user/venv/bin/pip install python-openstackclient"
         openstack_cfg01 = "set +x; . /home/$ssh_user/openrc; /home/$ssh_user/venv/bin/openstack --insecure "
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.small || true")
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor delete m1.nano || true")
@@ -59,7 +86,9 @@ node ('python') {
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 64 m1.nano")
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 flavor create --disk 1 --vcpus 1 --ram 128 m1.tiny")
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image  delete TestVM || true")
-        remote_ssh_cmd(cfg01_ip, "wget --progress=dot:mega -c http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img -O /home/$ssh_user/cirros-0.3.5-x86_64-disk.img")
+        remote_ssh_cmd(cfg01_ip, 'wget' + proxy_option_wget  +
+          ' --progress=dot:mega -c http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img' +
+          ' -O /home/' + ssh_user + '/cirros-0.3.5-x86_64-disk.img')
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 image create --force --public --file /home/$ssh_user/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 TestVM")
         remote_ssh_cmd(cfg01_ip, "$openstack_cfg01 volume type create standard-iops || true")
       }
