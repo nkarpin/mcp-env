@@ -1,6 +1,7 @@
 ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ssh_user = 'mcp-scale-jenkins'
+rally_node = "cfg01.${STACK_NAME}.local"
 def remote_ssh_cmd(server, command){
-  ssh_user = 'mos-scale-jenkins'
   writeFile file: '/tmp/cmd-tmp.sh', text: command
   sh "scp $ssh_opt /tmp/cmd-tmp.sh $ssh_user@$server:/tmp/cmd-tmp.sh"
   sh "ssh $ssh_opt $ssh_user@$server bash -xe /tmp/cmd-tmp.sh"
@@ -29,14 +30,32 @@ node ('python') {
     cfg01_ip = out.trim()
   }
   stage ('Prepare cluster for run rally'){
-    build(job: 'prepare-tests-mcp-env',
-      parameters: [
-        string( name: 'REFSPEC', value: REFSPEC),
-        string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
-        string( name: 'STACK_NAME', value: STACK_NAME),
-        booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(K8S_RALLY)),
-      ]
-    )
+    ssh_cmd = "ssh $ssh_opt"
+    ssh_cmd_cfg01 = "$ssh_cmd $ssh_user@$cfg01_ip "
+    // Switch Jenkins' pipeline-library to master branch
+    writeFile file: '/tmp/cmd_val.sh', text: "sed -i.bak 's/jenkins_pipelines_branch: .*/jenkins_pipelines_branch: master/' /srv/salt/reclass/classes/cluster/${STACK_NAME}/infra/init.yml"
+    sshagent (credentials: [ssh_user]) {
+      sh "scp $ssh_opt /tmp/cmd_val.sh $ssh_user@$cfg01_ip:/tmp/cmd_val.sh"
+      sh "$ssh_cmd_cfg01 sudo salt-cp $rally_node /tmp/cmd_val.sh /tmp/tmp-cmd-val.sh"
+      sh "$ssh_cmd_cfg01 sudo salt $rally_node cmd.run \\\'bash /tmp/tmp-cmd-val.sh\\\'"
+      sh "$ssh_cmd_cfg01 sudo salt $rally_node state.sls jenkins"
+    }
+    try {
+      build(job: 'prepare-tests-mcp-env',
+        parameters: [
+          string( name: 'REFSPEC', value: REFSPEC),
+          string( name: 'OS_PROJECT_NAME', value: OS_PROJECT_NAME),
+          string( name: 'STACK_NAME', value: STACK_NAME),
+          booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(K8S_RALLY)),
+        ]
+      )
+    } catch (Exception e) {
+      // In case of error in prepare job switch Jenkins pipeline-library branch back to original
+      sshagent (credentials: [ssh_user]) {
+        sh "$ssh_cmd_cfg01 sudo salt $rally_node cmd.run \\\'cp /srv/salt/reclass/classes/cluster/${STACK_NAME}/infra/init.yml.bak /srv/salt/reclass/classes/cluster/${STACK_NAME}/infra/init.yml\\\'"
+        sh "$ssh_cmd_cfg01 sudo salt $rally_node state.sls jenkins"
+      }
+    }
   }
   stage ('Run rally'){
     sh 'rm -rf archive'
@@ -66,12 +85,24 @@ node ('python') {
       "{\"name\":\"RALLY_SCENARIOS\",\"value\":\"test_config/$RALLY_SCENARIOS\"}," +
       "{\"name\":\"RALLY_TASK_ARGS_FILE\",\"value\":\"test_config/$RALLY_TASK_ARGS_FILE\"}," +
       '{\"name\":\"REPORT_DIR\",\"value\":\"\"},' +
-      '{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"}' +
+      '{\"name\":\"JOB_TIMEOUT\",\"value\":\"3\"},' +
+      '{\"name\":\"SPT_FLAVOR\",\"value\":\"\"},' +
+      '{\"name\":\"SPT_IMAGE\",\"value\":\"\"},' +
+      '{\"name\":\"SPT_IMAGE_USER\",\"value\":\"\"},' +
+      '{\"name\":\"SPT_SSH_USER\",\"value\":\"\"},' +
+      '{\"name\":\"TEMPEST_CONFIG_BRANCH\",\"value\":\"\"},' +
+      '{\"name\":\"TEMPEST_CONFIG_REPO\",\"value\":\"\"},' +
+      '{\"name\":\"TEMPEST_REPO\",\"value\":\"\"},' +
+      '{\"name\":\"TEMPEST_TEST_SET\",\"value\":\"smoke\"},' +
+      '{\"name\":\"TEMPEST_VERSION\",\"value\":\"\"},' +
+      '{\"name\":\"TEST_K8S_API_SERVER\",\"value\":\"\"},' +
+      '{\"name\":\"TEST_K8S_CONFORMANCE_IMAGE\",\"value\":\"\"},' +
+      '{\"name\":\"TEST_K8S_NODE\",\"value\":\"\"}' +
       ']}'
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [
             string( name: 'REFSPEC', value: REFSPEC),
-            string( name: 'JOB_NAME', value: 'run-rally-cfg01'),
+            string( name: 'JOB_NAME', value: 'validate_openstack'),
             string( name: 'JOB_TIMEOUT', value: '8'),
             string( name: 'JOB_ATTEMPTS', value: '1'),
             string( name: 'JOB_JSON', value: JSON),
@@ -100,17 +131,22 @@ node ('python') {
         println "Can't add results to testrail !!!"
       }
     } finally {
-        archiveArtifacts artifacts: 'artifacts/*'
-        junit 'artifacts/*.xml'
-        if (params.REPORT_RALLY_RESULTS_TO_SCALE){
-          sshagent (credentials: ['mcp-scale-jenkins']) {
-            sh "D=/var/lib/kube-volumes/nginx-reports/\$(date +%Y-%m-%d_%H-%M-%S); " +
-               "ssh $ssh_opt root@infra-k8s.mcp-scale.mirantis.net mkdir \$D; scp $ssh_opt artifacts/* root@infra-k8s.mcp-scale.mirantis.net:\$D/; " +
-               "mkdir -p /tmp/$BUILD_TAG; echo '[main]' > /tmp/$BUILD_TAG/job_config.txt; " +
-               "echo BUILD_URL = $BUILD_URL >> /tmp/$BUILD_TAG/job_config.txt; " +
-               "scp $ssh_opt /tmp/$BUILD_TAG/job_config.txt root@infra-k8s.mcp-scale.mirantis.net:\$D/; rm -rf /tmp/$BUILD_TAG"
-          }
+      // Switch Jenkins pipeline-library branch back to original
+      sshagent (credentials: [ssh_user]) {
+        sh "$ssh_cmd_cfg01 sudo salt $rally_node cmd.run \\\'cp /srv/salt/reclass/classes/cluster/${STACK_NAME}/infra/init.yml.bak /srv/salt/reclass/classes/cluster/${STACK_NAME}/infra/init.yml\\\'"
+        sh "$ssh_cmd_cfg01 sudo salt $rally_node state.sls jenkins"
+      }
+      archiveArtifacts artifacts: 'artifacts/*'
+      junit 'artifacts/*.xml'
+      if (params.REPORT_RALLY_RESULTS_TO_SCALE){
+        sshagent (credentials: [ssh_user]) {
+          sh "D=/var/lib/kube-volumes/nginx-reports/\$(date +%Y-%m-%d_%H-%M-%S); " +
+             "ssh $ssh_opt root@infra-k8s.mcp-scale.mirantis.net mkdir \$D; scp $ssh_opt artifacts/* root@infra-k8s.mcp-scale.mirantis.net:\$D/; " +
+             "mkdir -p /tmp/$BUILD_TAG; echo '[main]' > /tmp/$BUILD_TAG/job_config.txt; " +
+             "echo BUILD_URL = $BUILD_URL >> /tmp/$BUILD_TAG/job_config.txt; " +
+             "scp $ssh_opt /tmp/$BUILD_TAG/job_config.txt root@infra-k8s.mcp-scale.mirantis.net:\$D/; rm -rf /tmp/$BUILD_TAG"
         }
+      }
     }
   }
 }

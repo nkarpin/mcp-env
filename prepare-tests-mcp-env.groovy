@@ -22,7 +22,7 @@ node ('python') {
   vpython = 'venv/bin/python'
   report = 'venv/bin/report'
   stage ('Build venv'){
-      sh "virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient 'jenkins-job-builder>=2.0.0.0b2' junitparser git+https://github.com/dis-xcom/testrail_reporter"
+      sh 'virtualenv venv; venv/bin/pip install python-openstackclient python-heatclient junitparser git+https://github.com/dis-xcom/testrail_reporter'
   }
   stage ('Get cfg01 floating'){
     out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
@@ -44,9 +44,6 @@ node ('python') {
       sh "$ssh_cmd_cfg01 sudo mv /tmp/docker-host.yml /etc/docker/daemon.json"
       sh "$ssh_cmd_cfg01 sudo salt $rally_node pkg.install docker-ce refresh=true"
     }
-  }
-  stage ('Deploy run-rally-cfg01 to cfg01'){
-    sh "cd files; PATH=${PATH}:${WORKSPACE}/venv/bin ./deploy-run-rally-cfg01-job.sh run-rally-cfg01 $cfg01_ip"
   }
   stage ('Prepare OpenStack cluster for rally tests'){
     if (! K8S_RALLY.toBoolean()) {
