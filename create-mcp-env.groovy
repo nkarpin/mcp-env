@@ -361,7 +361,7 @@ node ('python') {
       sh "wget -q -O ./scale-cfg01-day01-${mcpVersion}.qcow2 ${day01ImageUrl}"
       sh "md5sum ./scale-cfg01-day01-${mcpVersion}.qcow2"
       sh "$openstack image delete scale-cfg01-day01-${mcpVersion} || true"
-      sh "$openstack image create --disk-format qcow2 --file ./scale-cfg01-day01-${mcpVersion}.qcow2 scale-cfg01-day01-${mcpVersion}"
+      sh "$openstack image create --public --disk-format qcow2 --file ./scale-cfg01-day01-${mcpVersion}.qcow2 scale-cfg01-day01-${mcpVersion}"
       sh "rm ./scale-cfg01-day01-${mcpVersion}.qcow2"
     }
   }
