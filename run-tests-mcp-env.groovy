@@ -97,7 +97,8 @@ node ('python') {
       '{\"name\":\"TEMPEST_VERSION\",\"value\":\"\"},' +
       '{\"name\":\"TEST_K8S_API_SERVER\",\"value\":\"\"},' +
       '{\"name\":\"TEST_K8S_CONFORMANCE_IMAGE\",\"value\":\"\"},' +
-      '{\"name\":\"TEST_K8S_NODE\",\"value\":\"\"}' +
+      '{\"name\":\"TEST_K8S_NODE\",\"value\":\"\"},' +
+      "{\"name\":\"SKIP_LIST\", \"value\":\"$SKIP_LIST\"}," +
       ']}'
       build(job: 'run-job-on-cfg01-jenkins',
         parameters: [

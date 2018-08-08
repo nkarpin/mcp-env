@@ -40,6 +40,7 @@
  *   REPORT_CLUSTER_DEPLOYMENT_TO_TESTRAIL  Would you like to send test deployment report to TestRail?
  *   REPORT_RALLY_RESULTS_TO_TESTRAIL       Would you like to publish rally results to TestRail?
  *   REPORT_RALLY_RESULTS_TO_SCALE          Would you like to publish rally results to http://infra-k8s.mcp-scale.mirantis.net:8888/?
+ *   SKIP_LIST                              List of the scenarios which should be skipped.
  *
  **/
 
@@ -527,6 +528,7 @@ node ('python') {
             string( name: 'STACK_NAME', value: STACK_NAME),
             string( name: 'TEST_IMAGE', value: rally_image),
             booleanParam( name: 'K8S_RALLY', value: Boolean.valueOf(kubernetes_enabled)),
+            string( name: 'SKIP_LIST', value: SKIP_LIST),
             string( name: 'RALLY_PLUGINS_REPO', value: 'https://github.com/Mirantis/rally-plugins'),
             string( name: 'RALLY_PLUGINS_BRANCH', value: default_branch),
             string( name: 'RALLY_CONFIG_REPO', value: 'https://github.com/Mirantis/scale-scenarios'),
