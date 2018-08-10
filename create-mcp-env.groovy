@@ -185,6 +185,7 @@ node ('python') {
   }
   stage ('Modify config drive image'){
     model_path = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/cluster/${STACK_NAME}"
+    git_path = "/tmp/cfg01.${STACK_NAME}-config/model/model"
     sh "rm -v cfg01.${STACK_NAME}-config.iso"
     common.infoMsg('Backupping origin structure')
     sh(script: "mkdir -vp /tmp/cfg01.${STACK_NAME}-config/original_data/")
@@ -325,6 +326,9 @@ node ('python') {
         sh "sed -i 's/pgp_num: 128/pgp_num: 4/g' $model_path/ceph/setup.yml"
       }
     }
+    //Commit all model changes to local git
+    sh "git -C $git_path add $model_path/* "
+    sh "git -C $git_path commit -a -m 'Add automation changes'"
   }
   stage ('Build config drive image'){
     sh "mkisofs -o ${WORKSPACE}/cfg01.${STACK_NAME}-config.iso -V cidata -r -J --quiet /tmp/cfg01.${STACK_NAME}-config"
@@ -461,6 +465,9 @@ node ('python') {
           sh "$ssh_cmd_cfg01 sudo salt-cp \\\"cmp*\\\" compute_autoregistration.sh /tmp/autoreg.sh"
           sh "$ssh_cmd_cfg01 sudo salt \\\"cmp*\\\" cmd.run \\\"bash +x /tmp/autoreg.sh $STACK_NAME\\\" "
         }
+        //Commit all MAAS changes to local git
+        sh "$ssh_cmd_cfg01 sudo git -C /srv/salt/reclass add /srv/salt/reclass/classes/cluster/$STACK_NAME/*"
+        sh "$ssh_cmd_cfg01 sudo git -C /srv/salt/reclass commit -a -m \\\"Add MAAS changes to git\\\""
       }
     }
     else {
