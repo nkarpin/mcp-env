@@ -411,6 +411,7 @@ node ('python') {
             string( name: 'HEAT_TEMPLATES_REFSPEC', value: HEAT_TEMPLATES_REFSPEC),
             booleanParam( name: 'MAAS_ENABLE', value: MAAS_ENABLE.toBoolean()),
             booleanParam( name: 'OFFLINE_DEPLOYMENT', value: OFFLINE_DEPLOYMENT.toBoolean()),
+            booleanParam( name: 'TENANT_TELEMETRY_ENABLE', value: templateContext[default_context].get('tenant_telemetry_enabled', False).toBoolean()),
             string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
           ])
 

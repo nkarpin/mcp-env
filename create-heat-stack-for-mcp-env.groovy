@@ -55,6 +55,10 @@ node ('python') {
           def install_stacklight = False
           def install_maas = False
           def install_ceph = False
+          def install_tenant_telemetry = False
+          if (common.validInputParam('TENANT_TELEMETRY_ENABLE')){
+            install_tenant_telemetry = TENANT_TELEMETRY_ENABLE.toBoolean()
+          }
           def nameservers = '8.8.8.8'
           if (OPENSTACK_ENVIRONMENT == 'presales') {
             nameservers = '10.10.0.15'
@@ -92,6 +96,7 @@ node ('python') {
             "--parameter stack_full=${STACK_FULL} " +
             "--parameter compute_bunch=${COMPUTE_BUNCH} " +
             "--parameter install_maas=${install_maas} " +
+            "--parameter install_tenant_telemetry=${install_tenant_telemetry} " +
             "--parameter opencontrail_version=${OPENCONTRAIL_VERSION} " +
             "--parameter security_group=${security_group} " +
             "-t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
