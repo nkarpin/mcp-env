@@ -203,13 +203,20 @@ node ('python') {
         sh "$reclass_tools add-key --merge classes $neededClass $infraInitFile"
       }
     }
-    // Always clone mcp-scale-jenkins user from master and add it to qa_scale ssh group. Needed for old releases (older then https://gerrit.mcp.mirantis.net/#/c/19499/)
-    masterMcpScaleJenkinsUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/members/mcp-scale-jenkins.yml;hb=refs/heads/master'"
+    // Clone mcp-scale-jenkins user from master and add it to infra for old releases (older then https://gerrit.mcp.mirantis.net/#/c/19499/)
+    neededUser = 'system.openssh.server.team.members.mcp-scale-jenkins'
     systemLevelPath = "/tmp/cfg01.${STACK_NAME}-config/model/model/classes/system"
-    McpScaleFile = systemLevelPath + '/openssh/server/team/members/mcp-scale-jenkins.yml'
     QaScaleFile = systemLevelPath + '/openssh/server/team/qa_scale.yml'
-    sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
-    sh "$reclass_tools add-key --merge classes system.openssh.server.team.members.mcp-scale-jenkins ${QaScaleFile}"
+    UserExists = sh script: "grep $neededUser $QaScaleFile", returnStatus: true
+    if (UserExists == 0){
+      println "User $neededUser found in system/openssh"
+    } else {
+      println "User $neededUser not found in system/openssh. Adding it to infra/init.yml"
+      masterMcpScaleJenkinsUrl = "'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=openssh/server/team/members/mcp-scale-jenkins.yml;hb=refs/heads/master'"
+      McpScaleFile = model_path + '/infra/mcp-scale-jenkins.yml'
+      sh "curl -s ${masterMcpScaleJenkinsUrl} > ${McpScaleFile}"
+      sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.mcp-scale-jenkins $infraInitFile"
+    }
     // Add Validate job from master to cluster level
     sh "curl -s 'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=jenkins/client/job/validate.yml;hb=refs/heads/master' > $model_path/infra/validate.yml"
     sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.validate $model_path/infra/config.yml"
