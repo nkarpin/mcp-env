@@ -60,6 +60,7 @@ String stacklight_context = 'stacklight_enabled'
 String cicd_context = 'cicd_enabled'
 String opencontrail_context = 'opencontrail_enabled'
 String ceph_context = 'ceph_enabled'
+String maas_context = 'maas_enabled'
 String platform = 'platform'
 String public_host = 'public_host'
 String file_suf = '.yaml'
@@ -133,6 +134,7 @@ node ('python') {
     templateContext[default_context][stacklight_context] = False
     cicd_enabled = false
     templateContext[default_context][cicd_context] = False
+    templateContext[default_context][maas_context] = False
     stack_install_options.each {
       switch ( it ) {
         case 'openstack':
@@ -170,6 +172,10 @@ node ('python') {
       }
     }
     if ( MAAS_ENABLE.toBoolean() && kubernetes_enabled ) { templateContext[default_context]['kubernetes_keepalived_vip_interface'] = 'one1' }
+    if ( MAAS_ENABLE.toBoolean() ) {
+      templateContext[default_context][maas_context] = True
+      templateContext[default_context]['internal_proxy_enabled'] = True
+    }
     writeYaml file: tmp_template_file, data: templateContext
     COOKIECUTTER_TEMPLATE_CONTEXT = readFile tmp_template_file
     archiveArtifacts artifacts: JOB_NAME + file_suf
@@ -225,14 +231,12 @@ node ('python') {
     sh "curl -s 'https://gerrit.mcp.mirantis.net/gitweb?p=salt-models/reclass-system.git;a=blob_plain;f=jenkins/client/job/validate.yml;hb=refs/heads/master' > $model_path/infra/validate.yml"
     sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.validate $model_path/infra/config.yml"
     if (!STACK_FULL.toBoolean()) {
-      println 'Setting workarounds for MAAS'
-      // Modify MAAS yaml if it necessary
       if ( MAAS_ENABLE.toBoolean() ) {
+        // Modify MAAS yaml if it necessary
+        println 'Setting workarounds for MAAS'
         source_patch_path = "$WORKSPACE/cluster_settings_patch"
         sh "mkdir $model_path/infra/scale-ci-patch"
-        sh "cp -f $source_patch_path/maas_proxy_enable.yml.src $model_path/infra/scale-ci-patch/maas_proxy_enable.yml"
         sh "cp -f $source_patch_path/machines_template.yml.src $model_path/infra/scale-ci-patch/machines_template.yml"
-        sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.maas_proxy_enable $model_path/infra/maas.yml"
         sh "$reclass_tools add-key --merge classes cluster.${STACK_NAME}.infra.scale-ci-patch.machines_template $model_path/infra/maas.yml"
         //NOTE: differents from a customer setup.
         //This step is necessary becuase we can't disable port_security on the DevCloud. We need to specify IP addresses for the nodes in MAAS
