@@ -59,6 +59,7 @@ String kubernetes_context = 'kubernetes_enabled'
 String stacklight_context = 'stacklight_enabled'
 String cicd_context = 'cicd_enabled'
 String opencontrail_context = 'opencontrail_enabled'
+String ceph_context = 'ceph_enabled'
 String platform = 'platform'
 String public_host = 'public_host'
 String file_suf = '.yaml'
@@ -117,12 +118,16 @@ node ('python') {
     } else {
       templateContext[default_context][offline_deployment] = False
     }
+    templateContext[default_context][public_host] = ''
     def stack_install_options = STACK_INSTALL.split(split_char)
     openstack_enabled = false
+    templateContext[default_context][openstack_context] = False
     kubernetes_enabled = false
+    templateContext[default_context][kubernetes_context] = False
     opencontrail_enabled = false
-    ceph_enabled = false
     templateContext[default_context][opencontrail_context] = False
+    ceph_enabled = false
+    templateContext[default_context][ceph_context] = False
     stacklight_enabled = false
     templateContext[default_context][stacklight_context] = False
     cicd_enabled = false
@@ -132,14 +137,12 @@ node ('python') {
         case 'openstack':
           openstack_enabled = true
           templateContext[default_context][openstack_context] = True
-          templateContext[default_context][kubernetes_context] = False
           templateContext[default_context][platform] = openstack_context
           templateContext[default_context][public_host] = "\${_param:openstack_proxy_address}"
           break
         case 'k8s':
           kubernetes_enabled = true
           templateContext[default_context][kubernetes_context] = True
-          templateContext[default_context][openstack_context] = False
           templateContext[default_context][platform] = kubernetes_context
           templateContext[default_context][public_host] = "\${_param:infra_config_address}"
           break
@@ -159,7 +162,7 @@ node ('python') {
           break
         case 'ceph':
           ceph_enabled = true
-          templateContext[default_context]['ceph_enabled'] = True
+          templateContext[default_context][ceph_context] = True
           templateContext[default_context]['ceph_osd_count'] = OSD_NODES_COUNT
           templateContext[default_context]['ceph_osd_node_count'] = OSD_NODES_COUNT
           break
