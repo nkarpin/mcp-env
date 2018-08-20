@@ -70,6 +70,7 @@ String ssh_user = 'mcp-scale-jenkins'
 String ssh_opt = ' -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 String ssh_cmd = "ssh $ssh_opt"
 String apt_server = '10.10.0.14'
+String cfgBootstrapDriveUrl = ''
 
 
 node ('python') {
@@ -335,14 +336,15 @@ node ('python') {
   stage ('Build config drive image'){
     sh "mkisofs -o ${WORKSPACE}/cfg01.${STACK_NAME}-config.iso -V cidata -r -J --quiet /tmp/cfg01.${STACK_NAME}-config"
   }
+
+  // TODO(vsaienko) remove this after some period to make sure current builds are not affected.
   stage('Delete old image'){
     sh "for i in \$($openstack image list | grep -w cfg01-$STACK_NAME-config |  cut -f 2 -d'|'); do $openstack image delete \$i; done || true"
   }
-  stage('Upload image'){
-    sh "$openstack image create --disk-format raw --file cfg01.$STACK_NAME-config.iso cfg01-$STACK_NAME-config"
-  }
+
   stage('Collect artifatcs'){
     archiveArtifacts artifacts: "cfg01.${STACK_NAME}-config.iso"
+    cfgBootstrapDriveUrl = "${env.BUILD_URL}/artifact/cfg01.$STACK_NAME-config.iso"
   }
   stage('Update VMs images if needed'){
     mcpVersion = templateContext[default_context]['mcp_version']
@@ -416,9 +418,8 @@ node ('python') {
             booleanParam( name: 'OFFLINE_DEPLOYMENT', value: OFFLINE_DEPLOYMENT.toBoolean()),
             booleanParam( name: 'TENANT_TELEMETRY_ENABLE', value: templateContext[default_context].get('tenant_telemetry_enabled', False).toBoolean()),
             string( name: 'OPENCONTRAIL_VERSION', value: OPENCONTRAIL_VERSION),
+            string( name: 'CFG_BOOTSTRAP_DRIVE_URL', value: cfgBootstrapDriveUrl),
           ])
-
-    sh "$openstack image delete cfg01-$STACK_NAME-config"
 
     out = sh script: "$openstack stack show -f value -c outputs $STACK_NAME | jq -r .[0].output_value", returnStdout: true
     cfg01_ip = out.trim()

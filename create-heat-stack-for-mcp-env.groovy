@@ -99,6 +99,7 @@ node ('python') {
             "--parameter install_tenant_telemetry=${install_tenant_telemetry} " +
             "--parameter opencontrail_version=${OPENCONTRAIL_VERSION} " +
             "--parameter security_group=${security_group} " +
+            "--parameter cfg_bootstrap_drive=${CFG_BOOTSTRAP_DRIVE_URL} " +
             "-t template/$HEAT_TEMPLATE_FILE $STACK_NAME"
           print ('Try to start ' + cmd)
           sh cmd
