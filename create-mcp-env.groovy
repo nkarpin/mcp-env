@@ -361,7 +361,7 @@ node ('python') {
       vcpImages += 'mcp-offline-image-'
     }
     for (vcpImage in vcpImages) {
-      vmImageUrl = "http://ci.mcp.mirantis.net:8085/images/${vcpImage}${mcpVersion}.qcow2"
+      vmImageUrl = "http://apt.mirantis.net:8085/images/${vcpImage}${mcpVersion}.qcow2"
       // Get md5sum of the image which we need
       def vmImageMd5 = sh(returnStdout: true, script: "curl -s ${vmImageUrl}.md5 | awk '{print \$1}'")
       println "it's md5 of VM image ${vmImageMd5}"
@@ -384,7 +384,7 @@ node ('python') {
     if (mcpVersion == '') {
       mcpVersion = default_version
     }
-    day01ImageUrl = "http://ci.mcp.mirantis.net:8085/images/cfg01-day01-${mcpVersion}.qcow2"
+    day01ImageUrl = "http://apt.mirantis.net:8085/images/cfg01-day01-${mcpVersion}.qcow2"
     // Get md5sum of the image
     def day01ImageMd5 = sh(returnStdout: true, script: "curl -s ${day01ImageUrl}.md5 | awk '{print \$1}'")
     println "it's md5 of day01 image ${day01ImageMd5}"
